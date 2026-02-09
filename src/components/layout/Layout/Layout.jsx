@@ -1,40 +1,34 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import Navigation, { useMobileProfileMenu } from '../Navigation/Navigation';
+import Navigation from '../Navigation/Navigation';
+import AuthenticatedNav from '../AuthenticatedNav/AuthenticatedNav';
+import { useAuthStore } from '../../../store/authStore';
 
 const Layout = ({ 
   children, 
   showNavigation = true,
   className = '',
 }) => {
-  const { ProfileButton, MobileMenu } = useMobileProfileMenu();
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = !!user;
 
   return (
-    <div className={`min-h-screen min-h-[100dvh] bg-background relative overflow-hidden ${className}`}>
-      {/* Background decoration for web */}
-      <div className="hidden lg:block fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute -top-[20%] -right-[10%] w-[600px] h-[600px] bg-primary/5 rounded-full blur-[100px]" />
-        <div className="absolute bottom-[10%] -left-[10%] w-[500px] h-[500px] bg-secondary/5 rounded-full blur-[100px]" />
+    <div className={`min-h-screen min-h-[100dvh] bg-gradient-to-br from-amber-50/30 via-orange-50/20 to-red-50/30 relative overflow-hidden ${className}`}>
+      {/* Background decoration */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute -top-[20%] -right-[10%] w-[600px] h-[600px] bg-primary/5 rounded-full blur-[100px] animate-float" />
+        <div className="absolute bottom-[10%] -left-[10%] w-[500px] h-[500px] bg-secondary/5 rounded-full blur-[100px] animate-float" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-[50%] right-[30%] w-[400px] h-[400px] bg-amber-300/5 rounded-full blur-[100px] animate-float" style={{ animationDelay: '2s' }} />
       </div>
       
-      {/* Mobile Header with Profile */}
-      {showNavigation && (
-        <header className="lg:hidden sticky top-0 left-0 right-0 z-40 bg-white/72 backdrop-blur-lg border-b border-black/5">
-          <div className="flex items-center justify-end h-14 px-4">
-            <ProfileButton />
-          </div>
-        </header>
-      )}
+      {/* Navigation Component - Use AuthenticatedNav if logged in */}
+      {showNavigation && (isAuthenticated ? <AuthenticatedNav /> : <Navigation />)}
       
-      {showNavigation && <Navigation />}
-      <main className={showNavigation ? 'pb-24 lg:pb-12 lg:pl-32 lg:pr-12 relative z-10' : 'relative z-10'}>
-        <div className="max-w-7xl mx-auto">
+      <main className={`${showNavigation ? (isAuthenticated ? 'lg:pl-28 pt-6 lg:pt-6 pb-6' : 'pt-20 lg:pt-24 pb-6') : ''} relative z-10`}>
+        <div className="max-w-7xl mx-auto px-4 lg:px-6">
           {children}
         </div>
       </main>
-      
-      {/* Mobile Menu */}
-      {showNavigation && <MobileMenu />}
     </div>
   );
 };

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FiArrowRight, FiBook, FiActivity, FiShare2, FiCamera, FiClock, FiUsers, FiZap, FiCheck, FiTrendingUp, FiAward, FiHeart, FiTarget, FiLayers, FiBarChart } from 'react-icons/fi';
+import { FiArrowRight, FiBook, FiActivity, FiShare2, FiCamera, FiClock, FiUsers, FiZap, FiCheck, FiTrendingUp, FiAward, FiHeart, FiTarget, FiLayers, FiBarChart, FiMenu, FiX } from 'react-icons/fi';
 import { User, Circle, Star, Square, Leaf, Lightbulb, Pizza, Salad, Beef, UtensilsCrossed, CookingPot } from 'lucide-react';
 import Button from '../../components/common/Button/Button';
 
@@ -136,6 +136,29 @@ const faqs = [
 ];
 
 const Landing = () => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [fabIconIndex, setFabIconIndex] = useState(0);
+  
+  // Food-related icons for FAB rotation
+  const fabIcons = [
+    UtensilsCrossed,
+    Pizza,
+    Salad,
+    Beef,
+    CookingPot,
+    FiCamera
+  ];
+
+  // Rotate FAB icon every 2 seconds
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setFabIconIndex((prev) => (prev + 1) % fabIcons.length);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  const CurrentFabIcon = isMobileMenuOpen ? FiX : fabIcons[fabIconIndex];
+  
   // Floating cooking ingredients for animation
   const cookingIngredients = [
     { Icon: Pizza, color: 'text-orange-500' },
@@ -178,26 +201,154 @@ const Landing = () => {
           ))}
         </div>
 
-        {/* Header */}
-        <header className="flex items-center justify-between py-4 z-10">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center shadow-lg">
-              <User className="w-6 h-6 text-white" />
+        {/* Floating Recipe Cards - visible in hero section only on larger screens */}
+        <div className="hidden lg:block absolute right-[5%] top-[20%] z-0 pointer-events-none opacity-60">
+          <div className="relative w-[320px]">
+            {/* Recipe card showcase */}
+            <div className="glass-enhanced rounded-2xl p-6 shadow-2xl rotate-3 animate-float">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-xl flex items-center justify-center">
+                  <Pizza className="w-8 h-8 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">Pasta Carbonara</h3>
+                  <p className="text-sm text-text-secondary">25 mins • 4 servings</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">Pasta</span>
+                <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">Eggs</span>
+                <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">Bacon</span>
+              </div>
             </div>
-            <span className="text-2xl font-bold text-text tracking-tight">Chefio</span>
           </div>
-          <div className="flex items-center gap-3">
-            <Link to="/menu-generator" className="text-base font-medium text-white bg-primary px-5 py-2.5 rounded-full hover:bg-primary-dark transition-all duration-300 hover:scale-105 shadow-md">
+        </div>
+
+        <div className="hidden lg:block absolute left-[5%] top-[50%] z-0 pointer-events-none opacity-60">
+          <div className="relative w-[320px]">
+            {/* Recipe card showcase 2 */}
+            <div className="glass-enhanced rounded-2xl p-6 shadow-2xl -rotate-3 animate-float" style={{ animationDelay: '1s' }}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl flex items-center justify-center">
+                  <Salad className="w-8 h-8 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">Caesar Salad</h3>
+                  <p className="text-sm text-text-secondary">15 mins • 2 servings</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="px-3 py-1 bg-green-500/10 text-green-700 rounded-full text-xs font-medium">Lettuce</span>
+                <span className="px-3 py-1 bg-green-500/10 text-green-700 rounded-full text-xs font-medium">Cheese</span>
+                <span className="px-3 py-1 bg-green-500/10 text-green-700 rounded-full text-xs font-medium">Croutons</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="hidden lg:block absolute right-[8%] bottom-[15%] z-0 pointer-events-none opacity-60">
+          <div className="relative w-[320px]">
+            {/* Recipe card showcase 3 */}
+            <div className="glass-enhanced rounded-2xl p-6 shadow-2xl rotate-6 animate-float" style={{ animationDelay: '2s' }}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-amber-500/20 to-yellow-500/20 rounded-xl flex items-center justify-center">
+                  <Beef className="w-8 h-8 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">Chicken Stir Fry</h3>
+                  <p className="text-sm text-text-secondary">30 mins • 3 servings</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="px-3 py-1 bg-amber-500/10 text-amber-700 rounded-full text-xs font-medium">Chicken</span>
+                <span className="px-3 py-1 bg-amber-500/10 text-amber-700 rounded-full text-xs font-medium">Veggies</span>
+                <span className="px-3 py-1 bg-amber-500/10 text-amber-700 rounded-full text-xs font-medium">Soy Sauce</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Header - Desktop: Frosted Pill Navbar, Mobile: Hidden (FAB instead) */}
+        <header className="hidden lg:flex items-center justify-center py-4 z-10">
+          <nav className="flex items-center gap-2 px-6 py-3 bg-primary/10 backdrop-blur-xl border border-primary/20 rounded-full shadow-lg">
+            <Link to="/menu-generator" className="text-sm font-medium text-primary px-5 py-2 rounded-full hover:bg-primary hover:text-white transition-all duration-300">
               Smart Menu
             </Link>
-            <Link to="/scanner" className="text-base font-medium text-white bg-primary px-5 py-2.5 rounded-full hover:bg-primary-dark transition-all duration-300 hover:scale-105 shadow-md">
+            <Link to="/scanner" className="text-sm font-medium text-primary px-5 py-2 rounded-full hover:bg-primary hover:text-white transition-all duration-300">
               Food Scanner
             </Link>
-            <Link to="/login" className="text-base font-medium text-primary px-5 py-2.5 rounded-full hover:bg-primary/10 transition-all duration-300 hover:scale-105">
+            <Link to="/register" className="text-sm font-medium text-primary px-5 py-2 rounded-full hover:bg-primary hover:text-white transition-all duration-300">
+              Sign Up
+            </Link>
+            <Link to="/login" className="text-sm font-medium text-white bg-primary px-5 py-2 rounded-full hover:bg-primary-dark transition-all duration-300 shadow-md">
               Sign In
             </Link>
-          </div>
+          </nav>
         </header>
+
+        {/* Mobile FAB - Only visible on mobile */}
+        <div className="lg:hidden fixed bottom-6 right-6 z-50">
+          {/* FAB Button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="w-14 h-14 bg-gradient-to-br from-primary to-primary-dark rounded-full shadow-2xl flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-all duration-300"
+          >
+            <div className="transition-all duration-500 ease-in-out transform" key={isMobileMenuOpen ? 'close' : fabIconIndex}>
+              <CurrentFabIcon className="text-2xl animate-fade-in" />
+            </div>
+          </button>
+
+          {/* Mobile Menu */}
+          {isMobileMenuOpen && (
+            <>
+              {/* Backdrop */}
+              <div 
+                className="fixed inset-0 bg-black/40 backdrop-blur-sm -z-10 animate-fade-in"
+                onClick={() => setIsMobileMenuOpen(false)}
+              />
+              
+              {/* Menu Items */}
+              <div className="absolute bottom-20 right-0 flex flex-col gap-3">
+                <Link 
+                  to="/menu-generator" 
+                  className="flex items-center gap-3 px-6 py-3 bg-white rounded-full shadow-xl text-text font-medium hover:bg-primary hover:text-white transition-all duration-300 whitespace-nowrap animate-slide-in-right"
+                  style={{ animationDelay: '0.05s' }}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <UtensilsCrossed className="w-5 h-5" />
+                  Smart Menu
+                </Link>
+                <Link 
+                  to="/scanner" 
+                  className="flex items-center gap-3 px-6 py-3 bg-white rounded-full shadow-xl text-text font-medium hover:bg-primary hover:text-white transition-all duration-300 whitespace-nowrap animate-slide-in-right"
+                  style={{ animationDelay: '0.1s' }}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <FiCamera className="w-5 h-5" />
+                  Food Scanner
+                </Link>
+                <Link 
+                  to="/register" 
+                  className="flex items-center gap-3 px-6 py-3 bg-white rounded-full shadow-xl text-text font-medium hover:bg-primary hover:text-white transition-all duration-300 whitespace-nowrap animate-slide-in-right"
+                  style={{ animationDelay: '0.15s' }}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <FiUsers className="w-5 h-5" />
+                  Sign Up
+                </Link>
+                <Link 
+                  to="/login" 
+                  className="flex items-center gap-3 px-6 py-3 bg-primary rounded-full shadow-xl text-white font-medium hover:bg-primary-dark transition-all duration-300 whitespace-nowrap animate-slide-in-right"
+                  style={{ animationDelay: '0.2s' }}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <User className="w-5 h-5" />
+                  Sign In
+                </Link>
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Hero content */}
         <div className="flex-1 flex flex-col justify-center max-w-[700px] lg:max-w-[800px] py-10 z-10">
@@ -249,73 +400,6 @@ const Landing = () => {
           </div>
         </div>
       </section>
-
-      {/* Floating Recipe Cards - visible across entire page on larger screens */}
-      <div className="hidden lg:block fixed right-[5%] top-[20%] z-40 pointer-events-none">
-        <div className="relative w-[320px]">
-          {/* Recipe card showcase */}
-          <div className="glass-enhanced rounded-2xl p-6 shadow-2xl rotate-3 animate-float pointer-events-auto">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-xl flex items-center justify-center">
-                <Pizza className="w-8 h-8 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-bold text-lg">Pasta Carbonara</h3>
-                <p className="text-sm text-text-secondary">25 mins • 4 servings</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">Pasta</span>
-              <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">Eggs</span>
-              <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">Bacon</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="hidden lg:block fixed left-[5%] top-[50%] z-40 pointer-events-none">
-        <div className="relative w-[320px]">
-          {/* Recipe card showcase 2 */}
-          <div className="glass-enhanced rounded-2xl p-6 shadow-2xl -rotate-3 animate-float pointer-events-auto" style={{ animationDelay: '1s' }}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl flex items-center justify-center">
-                <Salad className="w-8 h-8 text-green-600" />
-              </div>
-              <div>
-                <h3 className="font-bold text-lg">Caesar Salad</h3>
-                <p className="text-sm text-text-secondary">15 mins • 2 servings</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <span className="px-3 py-1 bg-green-500/10 text-green-700 rounded-full text-xs font-medium">Lettuce</span>
-              <span className="px-3 py-1 bg-green-500/10 text-green-700 rounded-full text-xs font-medium">Cheese</span>
-              <span className="px-3 py-1 bg-green-500/10 text-green-700 rounded-full text-xs font-medium">Croutons</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="hidden lg:block fixed right-[8%] bottom-[15%] z-40 pointer-events-none">
-        <div className="relative w-[320px]">
-          {/* Recipe card showcase 3 */}
-          <div className="glass-enhanced rounded-2xl p-6 shadow-2xl rotate-6 animate-float pointer-events-auto" style={{ animationDelay: '2s' }}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-amber-500/20 to-yellow-500/20 rounded-xl flex items-center justify-center">
-                <Beef className="w-8 h-8 text-amber-600" />
-              </div>
-              <div>
-                <h3 className="font-bold text-lg">Chicken Stir Fry</h3>
-                <p className="text-sm text-text-secondary">30 mins • 3 servings</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <span className="px-3 py-1 bg-amber-500/10 text-amber-700 rounded-full text-xs font-medium">Chicken</span>
-              <span className="px-3 py-1 bg-amber-500/10 text-amber-700 rounded-full text-xs font-medium">Veggies</span>
-              <span className="px-3 py-1 bg-amber-500/10 text-amber-700 rounded-full text-xs font-medium">Soy Sauce</span>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Features Section */}
       <section className="py-20 px-6 lg:px-24 lg:py-24 bg-gradient-to-b from-white to-amber-50/30 relative overflow-hidden">

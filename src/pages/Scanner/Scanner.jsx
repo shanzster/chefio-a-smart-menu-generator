@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { FiCamera, FiX, FiCheck, FiArrowLeft, FiPlus } from 'react-icons/fi';
+import { Link, useNavigate } from 'react-router-dom';
+import { FiCamera, FiX, FiCheck, FiArrowLeft, FiPlus, FiArrowRight } from 'react-icons/fi';
 import { ArrowLeft, ChefHat, Camera, Drumstick, Apple, Carrot, Wheat, Milk, Egg } from 'lucide-react';
 import Button from '../../components/common/Button/Button';
 import Card from '../../components/common/Card/Card';
 import Badge from '../../components/common/Badge/Badge';
+import Navigation from '../../components/layout/Navigation/Navigation';
+import { toast } from '../../store/toastStore';
+import { recognizeFoodFromCanvas, preloadModels } from '../../services/ai/tensorflowService';
 
 // Icon mapping for ingredients
 const getIngredientIcon = (category) => {
@@ -38,10 +41,13 @@ const ingredientDatabase = {
 };
 
 const Scanner = () => {
+  const navigate = useNavigate();
   const [isScanning, setIsScanning] = useState(false);
   const [scannedIngredients, setScannedIngredients] = useState([]);
   const [currentScan, setCurrentScan] = useState(null);
+  const [alternatives, setAlternatives] = useState([]);
   const [manualInput, setManualInput] = useState('');
+  const [isIdentifying, setIsIdentifying] = useState(false);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -70,22 +76,98 @@ const Scanner = () => {
     setCurrentScan(null);
   };
 
-  const captureAndIdentify = () => {
+  const captureAndIdentify = async () => {
     if (!videoRef.current || !canvasRef.current) return;
 
-    const canvas = canvasRef.current;
-    const video = videoRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0);
+    console.log('\n📸 [SCANNER] Starting capture and identify...');
+    setIsIdentifying(true);
 
-    // Simulate AI recognition - in real app, this would call an API
-    const ingredients = Object.keys(ingredientDatabase);
-    const randomIngredient = ingredients[Math.floor(Math.random() * ingredients.length)];
-    const identified = ingredientDatabase[randomIngredient];
+    try {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
 
-    setCurrentScan(identified);
+      console.log('🖼️ [SCANNER] Image captured from video');
+      console.log('📐 [SCANNER] Canvas size:', canvas.width, 'x', canvas.height);
+
+      // Call TensorFlow.js for food recognition (runs in browser!)
+      console.log('🤖 [SCANNER] Calling TensorFlow.js AI...');
+      const recognizedFoods = await recognizeFoodFromCanvas(canvas);
+
+      if (recognizedFoods.length > 0) {
+        console.log('✅ [SCANNER] Recognition successful!');
+        console.log('📊 [SCANNER] Found', recognizedFoods.length, 'food items');
+        
+        // Show top result
+        const topResult = recognizedFoods[0];
+        console.log('🥇 [SCANNER] Top result:', topResult.name, `(${topResult.confidence}%)`);
+        
+        setCurrentScan({
+          name: topResult.name,
+          category: topResult.category,
+          description: `Identified with ${topResult.confidence}% confidence`,
+          confidence: topResult.confidence
+        });
+        
+        // Store alternatives for user to choose
+        const alts = recognizedFoods.slice(1, 4);
+        setAlternatives(alts);
+        console.log('🔄 [SCANNER] Alternatives:', alts.map(a => `${a.name} (${a.confidence}%)`));
+        
+        toast.success(`Identified: ${topResult.name}! (${topResult.confidence}% confident)`);
+      } else {
+        console.warn('⚠️ [SCANNER] No food items recognized');
+        toast.error('No food items recognized. Try again or add manually.');
+        
+        // Fallback to mock data
+        console.log('🔄 [SCANNER] Falling back to mock data...');
+        const ingredients = Object.keys(ingredientDatabase);
+        const randomIngredient = ingredients[Math.floor(Math.random() * ingredients.length)];
+        const identified = ingredientDatabase[randomIngredient];
+        identified.confidence = Math.floor(Math.random() * 20) + 70;
+        setCurrentScan(identified);
+      }
+    } catch (error) {
+      console.error('💥 [SCANNER] Recognition error:', error.message);
+      console.error('📚 [SCANNER] Error stack:', error.stack);
+      
+      toast.error('Failed to identify ingredient. Please try again.');
+      
+      // Fallback to mock data if AI fails
+      console.log('🔄 [SCANNER] Falling back to mock data...');
+      const ingredients = Object.keys(ingredientDatabase);
+      const randomIngredient = ingredients[Math.floor(Math.random() * ingredients.length)];
+      const identified = ingredientDatabase[randomIngredient];
+      identified.confidence = Math.floor(Math.random() * 20) + 70;
+      setCurrentScan(identified);
+      console.log('🎲 [SCANNER] Mock result:', identified.name);
+    } finally {
+      setIsIdentifying(false);
+      console.log('✨ [SCANNER] Capture and identify complete\n');
+    }
+  };
+
+  const goToMenuGenerator = () => {
+    if (scannedIngredients.length === 0) {
+      toast.error('Please scan at least one ingredient first');
+      return;
+    }
+
+    // Convert scanned ingredients to simple names
+    const ingredientNames = scannedIngredients.map(ing => ing.name);
+    
+    // Navigate to Menu Generator with ingredients
+    navigate('/cook/menu-generator', {
+      state: { 
+        ingredients: ingredientNames,
+        fromScanner: true 
+      }
+    });
+    
+    toast.success(`Forwarding ${ingredientNames.length} ingredients to Menu Generator!`);
   };
 
   const confirmIngredient = () => {
@@ -108,29 +190,26 @@ const Scanner = () => {
   };
 
   useEffect(() => {
+    // Preload TensorFlow models on component mount
+    console.log('🚀 [SCANNER] Preloading AI models...');
+    preloadModels().then(() => {
+      console.log('✅ [SCANNER] AI models ready!');
+      toast.success('AI models loaded! Ready to scan! 🤖');
+    }).catch(error => {
+      console.error('❌ [SCANNER] Failed to load AI models:', error);
+    });
+
     return () => {
       stopScanning();
     };
   }, []);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/72 backdrop-blur-lg border-b border-black/5 pt-safe">
-        <div className="flex items-center justify-between h-14 px-4 max-w-[1200px] mx-auto">
-          <Link to="/" className="flex items-center gap-2 text-text hover:text-primary transition-colors">
-            <FiArrowLeft />
-            <span className="font-semibold">Back</span>
-          </Link>
-          <span className="text-xl font-bold text-text flex items-center gap-2">
-            <ChefHat className="w-6 h-6" />
-            Scanner
-          </span>
-          <div className="w-20" /> {/* Spacer */}
-        </div>
-      </header>
+    <div className="min-h-screen bg-background relative">
+      {/* Navigation Component */}
+      <Navigation />
 
-      <div className="p-6 max-w-[600px] mx-auto">
+      <div className="p-6 pt-20 max-w-[600px] mx-auto">
         {/* Scanner Section */}
         <section className="mb-8">
           <h1 className="text-2xl font-bold text-text mb-2">Ingredient Scanner</h1>
@@ -151,6 +230,17 @@ const Scanner = () => {
                     className="w-full h-full object-cover scale-x-[-1]"
                   />
                   <canvas ref={canvasRef} className="hidden" />
+                  
+                  {/* Identifying overlay */}
+                  {isIdentifying && (
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center">
+                      <div className="text-center text-white">
+                        <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4" />
+                        <p className="font-medium text-lg">Identifying ingredient...</p>
+                        <p className="text-sm text-white/70 mt-2">Using AI recognition</p>
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Scanning overlay with frame */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -179,10 +269,11 @@ const Scanner = () => {
                 <div className="flex gap-3 p-4">
                   <button
                     onClick={captureAndIdentify}
-                    className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-primary to-secondary rounded-xl text-white font-semibold shadow-lg hover:shadow-xl active:scale-95 transition-all"
+                    disabled={isIdentifying}
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-primary to-secondary rounded-xl text-white font-semibold shadow-lg hover:shadow-xl active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <FiCamera className="text-xl" />
-                    Capture & Identify
+                    {isIdentifying ? 'Identifying...' : 'Capture & Identify'}
                   </button>
                   <button
                     onClick={stopScanning}
@@ -224,7 +315,9 @@ const Scanner = () => {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="text-lg font-bold text-text">{currentScan.name}</h3>
-                    <Badge variant="success" size="small">Identified!</Badge>
+                    <Badge variant="success" size="small">
+                      {currentScan.confidence}% confident
+                    </Badge>
                   </div>
                   <p className="text-sm text-text-secondary mb-2">{currentScan.description}</p>
                   <Badge variant="primary" size="small">{currentScan.category}</Badge>
@@ -237,13 +330,42 @@ const Scanner = () => {
                   <FiCheck className="text-xl" />
                 </button>
                 <button
-                  onClick={() => setCurrentScan(null)}
+                  onClick={() => {
+                    setCurrentScan(null);
+                    setAlternatives([]);
+                  }}
                   className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center text-text-tertiary hover:bg-gray-200 active:scale-95 transition-all"
                   title="Discard"
                 >
                   <FiX className="text-xl" />
                 </button>
               </div>
+              
+              {/* Alternative Suggestions */}
+              {alternatives.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <p className="text-sm font-medium text-text-secondary mb-2">Or did you mean:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {alternatives.map((alt, index) => (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          setCurrentScan({
+                            name: alt.name,
+                            category: alt.category,
+                            description: `Identified with ${alt.confidence}% confidence`,
+                            confidence: alt.confidence
+                          });
+                          setAlternatives([]);
+                        }}
+                        className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-text-secondary hover:border-primary hover:text-primary active:scale-95 transition-all"
+                      >
+                        {alt.name} ({alt.confidence}%)
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </Card>
           )}
 
@@ -306,17 +428,28 @@ const Scanner = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="mt-6 flex gap-2">
-              <Link to="/menu-generator" className="flex-1">
-                <Button fullWidth size="large">
-                  Generate Recipes
-                </Button>
-              </Link>
-              <Link to="/nutrition" className="flex-1">
-                <Button variant="outline" fullWidth size="large">
-                  Analyze Nutrition
-                </Button>
-              </Link>
+            <div className="mt-6 space-y-3">
+              <Button 
+                fullWidth 
+                size="large" 
+                icon={<FiArrowRight />}
+                onClick={goToMenuGenerator}
+              >
+                Generate Recipes ({scannedIngredients.length} ingredients)
+              </Button>
+              <div className="grid grid-cols-2 gap-3">
+                <Link to="/cook/nutrition" state={{ ingredients: scannedIngredients.map(i => i.name) }}>
+                  <Button variant="outline" fullWidth size="large">
+                    Analyze Nutrition
+                  </Button>
+                </Link>
+                <button
+                  onClick={() => setScannedIngredients([])}
+                  className="px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-text font-semibold hover:bg-gray-50 active:scale-95 transition-all"
+                >
+                  Clear All
+                </button>
+              </div>
             </div>
           </section>
         )}

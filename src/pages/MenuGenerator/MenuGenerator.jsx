@@ -6,6 +6,7 @@ import Button from '../../components/common/Button/Button';
 import Card from '../../components/common/Card/Card';
 import Badge from '../../components/common/Badge/Badge';
 import Input from '../../components/common/Input/Input';
+import Navigation from '../../components/layout/Navigation/Navigation';
 
 const suggestedIngredients = [
   { name: 'Chicken', category: 'Protein', icon: '🍗' },
@@ -95,29 +96,11 @@ const MenuGenerator = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/72 backdrop-blur-lg border-b border-black/5 pt-safe">
-        <div className="flex items-center justify-between h-14 px-4 max-w-[1200px] mx-auto">
-          <Link to="/" className="text-xl font-bold text-text flex items-center gap-2">
-            <ChefHat className="w-6 h-6" />
-            Chefio
-          </Link>
-          <div className="flex items-center gap-2">
-            <Link to="/scanner" className="text-sm font-medium text-text-secondary hover:text-text">
-              Scanner
-            </Link>
-            <Link to="/login">
-              <Button variant="ghost" size="small">Sign In</Button>
-            </Link>
-            <Link to="/register">
-              <Button size="small">Sign Up</Button>
-            </Link>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background relative">
+      {/* Navigation Component */}
+      <Navigation />
 
-      <div className="p-6 max-w-[900px] mx-auto">
+      <div className="p-6 pt-20 max-w-[900px] mx-auto">
         {/* Floating Background Elements */}
         <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
           <div className="absolute top-20 left-10 w-32 h-32 bg-primary/5 rounded-full blur-3xl animate-float" />
