@@ -4,7 +4,7 @@ import useAuthStore from './store/authStore';
 
 // Components
 import ProtectedRoute from './components/common/ProtectedRoute/ProtectedRoute';
-import AdminRoute from './components/common/ProtectedRoute/AdminRoute';
+// import AdminRoute from './components/common/ProtectedRoute/AdminRoute'; // Temporarily disabled
 import ToastContainer from './components/common/Toast/ToastContainer';
 
 // Public Pages
@@ -34,13 +34,13 @@ import Profile from './pages/cook/Profile/Profile';
 import RecipeView from './pages/guest/RecipeView/RecipeView';
 import GuestFeedback from './pages/guest/Feedback/Feedback';
 
-// Admin Pages
-import AdminLogin from './pages/admin/Login/AdminLogin.jsx';
-import AdminDashboard from './pages/admin/Dashboard/AdminDashboard.jsx';
-import UserManagement from './pages/admin/Users/UserManagement.jsx';
-import TicketManagement from './pages/admin/Tickets/TicketManagement.jsx';
-import ContentModeration from './pages/admin/Moderation/ContentModeration.jsx';
-import ActivityLogs from './pages/admin/Logs/ActivityLogs.jsx';
+// Admin Pages - Temporarily disabled for deployment
+// import AdminLogin from './pages/admin/Login/AdminLogin.jsx';
+// import AdminDashboard from './pages/admin/Dashboard/AdminDashboard.jsx';
+// import UserManagement from './pages/admin/Users/UserManagement.jsx';
+// import TicketManagement from './pages/admin/Tickets/TicketManagement.jsx';
+// import ContentModeration from './pages/admin/Moderation/ContentModeration.jsx';
+// import ActivityLogs from './pages/admin/Logs/ActivityLogs.jsx';
 
 import './App.css';
 
@@ -174,8 +174,8 @@ function App() {
         {/* Redirect /cook to /cook/dashboard */}
         <Route path="/cook" element={<Navigate to="/cook/dashboard" replace />} />
 
-        {/* Admin Routes */}
-        <Route path="/admin/login" element={<AdminLogin />} />
+        {/* Admin Routes - Temporarily disabled for deployment */}
+        {/* <Route path="/admin/login" element={<AdminLogin />} />
         <Route
           path="/admin/dashboard"
           element={
@@ -216,7 +216,7 @@ function App() {
             </AdminRoute>
           }
         />
-        <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} /> */}
 
         {/* Catch all */}
         <Route path="*" element={<Navigate to="/" replace />} />
