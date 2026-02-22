@@ -25,15 +25,15 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
     setErrors({});
-    
+
     try {
       await login(formData.email, formData.password);
       toast.success('Welcome back! 👋');
       navigate('/cook/dashboard');
     } catch (error) {
       toast.error(error.message || 'Failed to login. Please check your credentials.');
-      setErrors({ 
-        general: error.message || 'Failed to login. Please check your credentials.' 
+      setErrors({
+        general: error.message || 'Failed to login. Please check your credentials.'
       });
     } finally {
       setIsLoading(false);
@@ -44,16 +44,16 @@ const Login = () => {
     <div className="min-h-screen min-h-[100dvh] flex items-center justify-center p-6 bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 relative overflow-hidden">
       {/* Navigation Component */}
       <Navigation />
-      
+
       {/* Enhanced background gradient orbs */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute -top-[30%] -right-[20%] w-[600px] h-[600px] bg-primary/20 rounded-full blur-[100px] animate-float" />
         <div className="absolute -bottom-[20%] -left-[30%] w-[500px] h-[500px] bg-secondary/15 rounded-full blur-[100px] animate-float" style={{ animationDelay: '1s' }} />
         <div className="absolute top-[40%] right-[30%] w-[300px] h-[300px] bg-amber-300/10 rounded-full blur-[80px] animate-float" style={{ animationDelay: '2s' }} />
       </div>
 
       {/* Content */}
-      <div className="w-full max-w-[480px] relative z-10 animate-fade-in-up">
+      <div className="w-full max-w-[480px] relative z-10 animate-fade-in-up pt-20 pointer-events-auto">
         {/* Card Container */}
         <div className="glass-enhanced rounded-3xl p-8 lg:p-10 shadow-2xl border border-white/50">
           {/* Logo with glow effect */}
@@ -81,7 +81,7 @@ const Login = () => {
                 {errors.general}
               </div>
             )}
-            
+
             <Input
               label="Email Address"
               type="email"

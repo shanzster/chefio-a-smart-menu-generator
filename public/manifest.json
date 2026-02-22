@@ -1,0 +1,31 @@
+{
+  "name": "Chefio - Smart Menu Generator",
+  "short_name": "Chefio",
+  "description": "Your smart kitchen companion. Generate recipes from ingredients, scan foods, analyze nutrition, and share via QR codes.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f97316",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/chefio.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["food", "lifestyle", "education"],
+  "screenshots": [
+    {
+      "src": "/screenshots/menu-generator.png",
+      "sizes": "540x720",
+      "type": "image/png"
+    },
+    {
+      "src": "/screenshots/scanner.png",
+      "sizes": "540x720",
+      "type": "image/png"
+    }
+  ]
+}

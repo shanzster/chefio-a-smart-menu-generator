@@ -121,14 +121,18 @@ const MenuGenerator = () => {
       <div className="p-6 lg:p-12 lg:py-16 max-w-[900px] mx-auto">
         {/* Header */}
         <header className="text-center mb-10 lg:mb-16 animate-fade-in-down">
-          <div className="w-20 h-20 lg:w-24 lg:h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center">
-            <Star className="w-12 h-12 lg:w-16 lg:h-16 text-primary" />
+          <div className="mb-6">
+            <img 
+              src="/sidebar_logo.png" 
+              alt="Chefio Logo" 
+              className="w-32 h-32 lg:w-40 lg:h-40 mx-auto object-contain"
+            />
           </div>
-          <h1 className="text-2xl lg:text-4xl font-bold text-text mb-3">Menu Generator</h1>
+          <h1 className="text-2xl lg:text-4xl font-bold text-text mb-3">Ask Chefio</h1>
           <p className="text-base lg:text-lg text-text-secondary leading-relaxed max-w-[400px] lg:max-w-[500px] mx-auto">
             {location.state?.fromScanner 
               ? '✨ Ingredients loaded from Scanner! Generate recipes now.'
-              : 'Add your ingredients and let AI create delicious recipes for you'
+              : 'Add your ingredients and discover delicious recipes'
             }
           </p>
         </header>

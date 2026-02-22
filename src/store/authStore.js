@@ -93,6 +93,19 @@ const useAuthStore = create((set, get) => ({
 
   // Clear error
   clearError: () => set({ error: null }),
+
+  // Update user data in store
+  updateUser: (updates) => {
+    const currentUser = get().user;
+    if (currentUser) {
+      set({
+        user: {
+          ...currentUser,
+          ...updates
+        }
+      });
+    }
+  },
 }));
 
 // Named export for compatibility

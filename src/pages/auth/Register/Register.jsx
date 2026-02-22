@@ -48,9 +48,9 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     const newErrors = {};
-    
+
     // Validation
     if (!formData.firstName.trim()) {
       newErrors.firstName = 'First name is required';
@@ -67,7 +67,7 @@ const Register = () => {
       const age = today.getFullYear() - birthDate.getFullYear();
       const monthDiff = today.getMonth() - birthDate.getMonth();
       const actualAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age;
-      
+
       if (actualAge < 13) {
         newErrors.birthdate = 'You must be at least 13 years old';
       }
@@ -84,28 +84,28 @@ const Register = () => {
     if (!formData.country.trim()) {
       newErrors.country = 'Country is required';
     }
-    
+
     if (!agreedToTerms) {
       newErrors.terms = 'You must accept the Terms of Service and Privacy Policy';
     }
-    
+
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
     if (formData.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
     }
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
 
     setIsLoading(true);
-    
+
     try {
       const fullName = `${formData.firstName} ${formData.middleName ? formData.middleName + ' ' : ''}${formData.lastName}`.trim();
-      
+
       // Register with additional user data
       await register(formData.email, formData.password, fullName, {
         firstName: formData.firstName,
@@ -117,13 +117,13 @@ const Register = () => {
         city: formData.city,
         country: formData.country
       });
-      
+
       toast.success(`Welcome to Chefio, ${formData.firstName}! 🎉`);
       navigate('/cook/dashboard');
     } catch (error) {
       toast.error(error.message || 'Failed to create account. Please try again.');
-      setErrors({ 
-        general: error.message || 'Failed to create account. Please try again.' 
+      setErrors({
+        general: error.message || 'Failed to create account. Please try again.'
       });
     } finally {
       setIsLoading(false);
@@ -134,24 +134,24 @@ const Register = () => {
     <div className="min-h-screen min-h-[100dvh] flex items-center justify-center p-6 bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 relative overflow-hidden">
       {/* Navigation Component */}
       <Navigation />
-      
+
       {/* Enhanced background gradient orbs */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute -top-[20%] -left-[20%] w-[500px] h-[500px] bg-primary/18 rounded-full blur-[100px] animate-float" />
         <div className="absolute -bottom-[30%] -right-[20%] w-[600px] h-[600px] bg-secondary/12 rounded-full blur-[100px] animate-float" style={{ animationDelay: '1s' }} />
         <div className="absolute top-[50%] left-[50%] w-[350px] h-[350px] bg-amber-300/10 rounded-full blur-[80px] animate-float" style={{ animationDelay: '2s' }} />
       </div>
 
       {/* Content */}
-      <div className="w-full max-w-[600px] relative z-10 animate-fade-in-up">
+      <div className="w-full max-w-[600px] relative z-10 animate-fade-in-up pt-20 pointer-events-auto">
         {/* Card Container */}
-        <div className="glass-enhanced rounded-3xl p-8 lg:p-10 shadow-2xl border border-white/50 max-h-[90vh] overflow-y-auto">
+        <div className="glass-enhanced rounded-3xl p-8 lg:p-10 shadow-2xl border border-white/50 max-h-[90vh] overflow-y-auto scrollbar-hide">
           {/* Logo with glow effect */}
           <div className="mb-6 text-center relative">
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="w-20 h-20 bg-primary/20 rounded-full blur-2xl" />
+              <ChefHat className="w-16 h-16 mx-auto text-primary animate-float relative z-10" />
             </div>
-            <ChefHat className="w-16 h-16 mx-auto text-primary animate-float relative z-10" />
           </div>
 
           {/* Header */}
@@ -171,11 +171,11 @@ const Register = () => {
                 {errors.general}
               </div>
             )}
-            
+
             {/* Personal Information Section */}
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Personal Information</h3>
-              
+
               <div className="grid grid-cols-2 gap-3">
                 <Input
                   label="First Name"
@@ -232,7 +232,7 @@ const Register = () => {
             {/* Contact Information Section */}
             <div className="space-y-4 pt-4 border-t border-gray-200/50">
               <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Contact Information</h3>
-              
+
               <Input
                 label="Email Address"
                 type="email"
@@ -263,7 +263,7 @@ const Register = () => {
             {/* Address Information Section */}
             <div className="space-y-4 pt-4 border-t border-gray-200/50">
               <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Address</h3>
-              
+
               <Input
                 label="Street Address"
                 type="text"
@@ -309,7 +309,7 @@ const Register = () => {
             {/* Security Section */}
             <div className="space-y-4 pt-4 border-t border-gray-200/50">
               <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Security</h3>
-              
+
               <Input
                 label="Password"
                 type="password"
@@ -346,18 +346,18 @@ const Register = () => {
           {/* Terms and Conditions */}
           <div className={`mt-6 p-4 bg-white/50 backdrop-blur-sm rounded-xl border ${errors.terms ? 'border-error' : 'border-gray-200'}`}>
             <label className="flex items-start gap-3 cursor-pointer group">
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 checked={agreedToTerms}
                 onChange={(e) => {
                   setAgreedToTerms(e.target.checked);
                   if (errors.terms) setErrors(prev => ({ ...prev, terms: '' }));
                 }}
-                className="mt-1 w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary focus:ring-2 flex-shrink-0" 
+                className="mt-1 w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary focus:ring-2 flex-shrink-0"
               />
               <span className="text-sm text-text-secondary leading-relaxed">
                 I agree to the{' '}
-                <button 
+                <button
                   type="button"
                   onClick={() => openLegalModal('terms')}
                   className="text-primary font-medium hover:underline"
@@ -365,7 +365,7 @@ const Register = () => {
                   Terms of Service
                 </button>
                 {' '}and{' '}
-                <button 
+                <button
                   type="button"
                   onClick={() => openLegalModal('privacy')}
                   className="text-primary font-medium hover:underline"

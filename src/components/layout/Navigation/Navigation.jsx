@@ -30,7 +30,7 @@ const Navigation = () => {
   return (
     <>
       {/* Header - Desktop: Frosted Pill Navbar, Mobile: Hidden (FAB instead) */}
-      <header className="hidden lg:flex items-center justify-center py-4 z-10 absolute top-0 left-0 right-0">
+      <header className="hidden lg:flex items-center justify-center py-4 z-50 absolute top-0 left-0 right-0">
         <nav className="flex items-center gap-2 px-6 py-3 bg-primary/10 backdrop-blur-xl border border-primary/20 rounded-full shadow-lg">
           <Link to="/menu-generator" className="text-sm font-medium text-primary px-5 py-2 rounded-full hover:bg-primary hover:text-white transition-all duration-300">
             Smart Menu

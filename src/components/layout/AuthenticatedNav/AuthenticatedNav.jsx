@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { FiHome, FiBook, FiActivity, FiShare2, FiUser, FiLogOut, FiSettings, FiX, FiSearch, FiUsers, FiMessageSquare, FiHelpCircle, FiCamera } from 'react-icons/fi';
+import { FiHome, FiBook, FiActivity, FiShare2, FiUser, FiLogOut, FiSettings, FiX, FiSearch, FiUsers, FiMessageSquare, FiHelpCircle, FiCamera, FiCompass } from 'react-icons/fi';
 import { ChefHat, UtensilsCrossed, Pizza, Salad, Beef, CookingPot, Scan } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 
@@ -41,6 +41,7 @@ const AuthenticatedNav = () => {
     { path: '/cook/dashboard', icon: FiHome, label: 'Dashboard' },
     { path: '/scanner', icon: Scan, label: 'Food Scanner' },
     { path: '/cook/menu-generator', icon: UtensilsCrossed, label: 'Generate Menu' },
+    { path: '/cook/browse-recipes', icon: FiCompass, label: 'Browse Recipes' },
     { path: '/cook/recipes', icon: FiBook, label: 'My Recipes' },
     { path: '/cook/nutrition', icon: FiActivity, label: 'Nutrition' },
     { path: '/cook/recipe-finder', icon: FiSearch, label: 'Recipe Finder' },
@@ -60,9 +61,13 @@ const AuthenticatedNav = () => {
           {/* Logo */}
           <Link 
             to="/cook/dashboard" 
-            className="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-primary-dark shadow-lg hover:scale-110 transition-transform duration-300"
+            className="flex items-center justify-center w-14 h-14 rounded-2xl hover:scale-110 transition-transform duration-300"
           >
-            <ChefHat className="w-7 h-7 text-white" />
+            <img 
+              src="/sidebar_logo.png" 
+              alt="Chefio" 
+              className="w-14 h-14 object-contain"
+            />
           </Link>
 
           {/* Divider */}
@@ -74,15 +79,18 @@ const AuthenticatedNav = () => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`group flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 overflow-hidden ${
+                className={`group relative flex items-center justify-center w-14 h-14 rounded-2xl transition-all duration-300 ${
                   isActive(item.path)
                     ? 'bg-gradient-to-r from-primary to-primary-dark text-white shadow-lg shadow-primary/30'
                     : 'text-text-secondary hover:bg-primary/10 hover:text-primary'
                 }`}
+                title={item.label}
               >
                 <item.icon className="w-5 h-5 flex-shrink-0" />
-                <span className="whitespace-nowrap text-sm font-medium max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden">
+                {/* Tooltip */}
+                <span className="absolute left-full ml-4 px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-50 shadow-lg">
                   {item.label}
+                  <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900"></span>
                 </span>
               </Link>
             ))}
@@ -98,31 +106,40 @@ const AuthenticatedNav = () => {
           <div className="flex flex-col gap-2">
             <Link
               to="/cook/profile"
-              className="group flex items-center gap-3 px-4 py-3 rounded-2xl text-text-secondary hover:bg-primary/10 hover:text-primary transition-all duration-300 overflow-hidden"
+              className="group relative flex items-center justify-center w-14 h-14 rounded-2xl text-text-secondary hover:bg-primary/10 hover:text-primary transition-all duration-300"
+              title="Profile"
             >
               <FiUser className="w-5 h-5 flex-shrink-0" />
-              <span className="whitespace-nowrap text-sm font-medium max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden">
+              {/* Tooltip */}
+              <span className="absolute left-full ml-4 px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-50 shadow-lg">
                 Profile
+                <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900"></span>
               </span>
             </Link>
 
             <Link
               to="/cook/settings"
-              className="group flex items-center gap-3 px-4 py-3 rounded-2xl text-text-secondary hover:bg-primary/10 hover:text-primary transition-all duration-300 overflow-hidden"
+              className="group relative flex items-center justify-center w-14 h-14 rounded-2xl text-text-secondary hover:bg-primary/10 hover:text-primary transition-all duration-300"
+              title="Settings"
             >
               <FiSettings className="w-5 h-5 flex-shrink-0" />
-              <span className="whitespace-nowrap text-sm font-medium max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden">
+              {/* Tooltip */}
+              <span className="absolute left-full ml-4 px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-50 shadow-lg">
                 Settings
+                <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900"></span>
               </span>
             </Link>
 
             <button
               onClick={handleLogout}
-              className="group flex items-center gap-3 px-4 py-3 rounded-2xl text-text-secondary hover:bg-error/10 hover:text-error transition-all duration-300 overflow-hidden"
+              className="group relative flex items-center justify-center w-14 h-14 rounded-2xl text-text-secondary hover:bg-error/10 hover:text-error transition-all duration-300"
+              title="Logout"
             >
               <FiLogOut className="w-5 h-5 flex-shrink-0" />
-              <span className="whitespace-nowrap text-sm font-medium max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden">
+              {/* Tooltip */}
+              <span className="absolute left-full ml-4 px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-50 shadow-lg">
                 Logout
+                <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900"></span>
               </span>
             </button>
           </div>

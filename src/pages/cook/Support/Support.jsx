@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FiHelpCircle, FiPlus, FiClock, FiCheckCircle, FiAlertCircle, FiMessageSquare, FiX } from 'react-icons/fi';
 import { LifeBuoy, Send } from 'lucide-react';
 import Layout from '../../../components/layout/Layout/Layout';
@@ -6,91 +6,30 @@ import Card from '../../../components/common/Card/Card';
 import Badge from '../../../components/common/Badge/Badge';
 import Button from '../../../components/common/Button/Button';
 import Input from '../../../components/common/Input/Input';
+import { useAuthStore } from '../../../store/authStore';
+import { toast } from '../../../store/toastStore';
+import { 
+  createTicket, 
+  getUserTickets, 
+  getTicketResponses, 
+  addTicketResponse 
+} from '../../../services/firebase/ticketService';
 
 const Support = () => {
+  const user = useAuthStore((state) => state.user);
   const [showNewTicketForm, setShowNewTicketForm] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [tickets, setTickets] = useState([]);
+  const [responses, setResponses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [replyText, setReplyText] = useState('');
   const [newTicket, setNewTicket] = useState({
     category: '',
     subject: '',
     description: '',
     priority: 'medium',
   });
-
-  // Mock ticket data
-  const tickets = [
-    {
-      id: 'TKT-001',
-      subject: 'Unable to generate QR code',
-      category: 'Menu Sharing',
-      description: 'When I try to generate a QR code for my recipe, the system shows an error message.',
-      status: 'open',
-      priority: 'high',
-      createdAt: '2026-02-03',
-      updatedAt: '2026-02-03',
-      responses: [
-        {
-          id: 1,
-          from: 'Support Team',
-          message: 'Thank you for reporting this issue. We are investigating the QR code generation problem. Could you please provide the recipe name you were trying to share?',
-          timestamp: '2026-02-03 14:30',
-          isSupport: true,
-        }
-      ]
-    },
-    {
-      id: 'TKT-002',
-      subject: 'Nutrition calculation seems incorrect',
-      category: 'Nutritional Analysis',
-      description: 'The calorie count for my pasta recipe seems too high. Can you verify the calculation?',
-      status: 'in-progress',
-      priority: 'medium',
-      createdAt: '2026-02-02',
-      updatedAt: '2026-02-03',
-      responses: [
-        {
-          id: 1,
-          from: 'Support Team',
-          message: 'We have reviewed your recipe and the nutritional calculations. The values are based on standard ingredient databases. However, we will double-check the pasta serving size calculation.',
-          timestamp: '2026-02-02 16:45',
-          isSupport: true,
-        },
-        {
-          id: 2,
-          from: 'You',
-          message: 'Thank you! I used 400g of pasta for 4 servings.',
-          timestamp: '2026-02-03 09:15',
-          isSupport: false,
-        },
-        {
-          id: 3,
-          from: 'Support Team',
-          message: 'Thank you for the details. The calculation is correct - 400g of dry pasta is approximately 1400 calories. When divided by 4 servings, that\'s 350 calories just from the pasta. We\'ll update our system to show a breakdown by ingredient to make this clearer.',
-          timestamp: '2026-02-03 11:20',
-          isSupport: true,
-        }
-      ]
-    },
-    {
-      id: 'TKT-003',
-      subject: 'Feature request: Meal planning',
-      category: 'Feature Request',
-      description: 'It would be great to have a weekly meal planning feature where I can schedule recipes for the week.',
-      status: 'resolved',
-      priority: 'low',
-      createdAt: '2026-01-28',
-      updatedAt: '2026-02-01',
-      responses: [
-        {
-          id: 1,
-          from: 'Support Team',
-          message: 'Thank you for your suggestion! We have added this to our feature roadmap. Meal planning is something we are actively working on and hope to release in the next quarter.',
-          timestamp: '2026-02-01 10:00',
-          isSupport: true,
-        }
-      ]
-    },
-  ];
 
   const categories = [
     'Meal Generation',
@@ -102,6 +41,42 @@ const Support = () => {
     'Bug Report',
     'Other'
   ];
+
+  // Load user tickets
+  useEffect(() => {
+    const loadTickets = async () => {
+      if (!user) return;
+
+      try {
+        const userTickets = await getUserTickets(user.uid);
+        setTickets(userTickets);
+      } catch (error) {
+        console.error('Error loading tickets:', error);
+        toast.error('Failed to load tickets');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTickets();
+  }, [user]);
+
+  // Load responses when ticket is selected
+  useEffect(() => {
+    const loadResponses = async () => {
+      if (!selectedTicket) return;
+
+      try {
+        const ticketResponses = await getTicketResponses(selectedTicket.id);
+        setResponses(ticketResponses);
+      } catch (error) {
+        console.error('Error loading responses:', error);
+        toast.error('Failed to load conversation');
+      }
+    };
+
+    loadResponses();
+  }, [selectedTicket]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -130,13 +105,100 @@ const Support = () => {
     }
   };
 
-  const handleSubmitTicket = (e) => {
+  const handleSubmitTicket = async (e) => {
     e.preventDefault();
-    // Handle ticket submission
-    console.log('New ticket:', newTicket);
-    setShowNewTicketForm(false);
-    setNewTicket({ category: '', subject: '', description: '', priority: 'medium' });
+    
+    if (!user) {
+      toast.error('You must be logged in to submit a ticket');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const ticketData = {
+        ...newTicket,
+        userId: user.uid,
+        userEmail: user.email,
+        userName: user.displayName || user.email
+      };
+
+      await createTicket(ticketData);
+      toast.success('Ticket submitted successfully!');
+      
+      // Reload tickets
+      const userTickets = await getUserTickets(user.uid);
+      setTickets(userTickets);
+      
+      // Reset form
+      setShowNewTicketForm(false);
+      setNewTicket({ category: '', subject: '', description: '', priority: 'medium' });
+    } catch (error) {
+      console.error('Error submitting ticket:', error);
+      toast.error('Failed to submit ticket');
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  const handleSendReply = async () => {
+    if (!replyText.trim() || !selectedTicket) return;
+
+    try {
+      const responseData = {
+        from: user.displayName || user.email,
+        userId: user.uid,
+        message: replyText,
+        isSupport: false
+      };
+
+      await addTicketResponse(selectedTicket.id, responseData);
+      
+      // Reload responses
+      const ticketResponses = await getTicketResponses(selectedTicket.id);
+      setResponses(ticketResponses);
+      
+      // Reload tickets to update response count
+      const userTickets = await getUserTickets(user.uid);
+      setTickets(userTickets);
+      
+      setReplyText('');
+      toast.success('Reply sent!');
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      toast.error('Failed to send reply');
+    }
+  };
+
+  const formatDate = (timestamp) => {
+    if (!timestamp) return 'N/A';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp.seconds * 1000);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const formatDateTime = (timestamp) => {
+    if (!timestamp) return 'N/A';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp.seconds * 1000);
+    return date.toLocaleString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-text-secondary">Loading tickets...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -193,48 +255,69 @@ const Support = () => {
         {/* Tickets List */}
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-text">Your Tickets</h2>
-          {tickets.map((ticket) => {
-            const StatusIcon = getStatusIcon(ticket.status);
-            return (
-              <Card
-                key={ticket.id}
-                variant="glass"
-                hover
-                className="border border-white/50 cursor-pointer"
-                onClick={() => setSelectedTicket(ticket)}
+          
+          {tickets.length === 0 ? (
+            <Card variant="glass" className="p-12 text-center border border-white/50">
+              <LifeBuoy className="w-16 h-16 text-text-tertiary mx-auto mb-4 opacity-50" />
+              <h3 className="text-xl font-bold text-text mb-2">No Tickets Yet</h3>
+              <p className="text-text-secondary mb-6">
+                Need help? Submit a support ticket and our team will assist you.
+              </p>
+              <Button
+                icon={<FiPlus />}
+                onClick={() => setShowNewTicketForm(true)}
               >
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="text-sm font-mono text-text-tertiary">{ticket.id}</span>
-                        <Badge variant={getStatusColor(ticket.status)} size="small">
-                          <StatusIcon className="w-3 h-3 mr-1 inline" />
-                          {ticket.status}
-                        </Badge>
-                        <span className={`text-xs font-semibold uppercase ${getPriorityColor(ticket.priority)}`}>
-                          {ticket.priority} priority
-                        </span>
-                      </div>
-                      <h3 className="text-lg font-semibold text-text mb-2">{ticket.subject}</h3>
-                      <p className="text-sm text-text-secondary mb-3 line-clamp-2">{ticket.description}</p>
-                      <div className="flex items-center gap-4 text-xs text-text-tertiary">
-                        <span>Category: {ticket.category}</span>
-                        <span>•</span>
-                        <span>Created: {new Date(ticket.createdAt).toLocaleDateString()}</span>
-                        <span>•</span>
-                        <span>Updated: {new Date(ticket.updatedAt).toLocaleDateString()}</span>
+                Submit Your First Ticket
+              </Button>
+            </Card>
+          ) : (
+            tickets.map((ticket) => {
+              const StatusIcon = getStatusIcon(ticket.status);
+              return (
+                <div
+                  key={ticket.id}
+                  onClick={() => setSelectedTicket(ticket)}
+                  className="cursor-pointer"
+                >
+                  <Card
+                    variant="glass"
+                    hover
+                    className="border border-white/50"
+                  >
+                    <div className="p-6">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className="text-sm font-mono text-text-tertiary">#{ticket.id.slice(0, 8)}</span>
+                            <Badge variant={getStatusColor(ticket.status)} size="small">
+                              <StatusIcon className="w-3 h-3 mr-1 inline" />
+                              {ticket.status}
+                            </Badge>
+                            <span className={`text-xs font-semibold uppercase ${getPriorityColor(ticket.priority)}`}>
+                              {ticket.priority} priority
+                            </span>
+                          </div>
+                          <h3 className="text-lg font-semibold text-text mb-2">{ticket.subject}</h3>
+                          <p className="text-sm text-text-secondary mb-3 line-clamp-2">{ticket.description}</p>
+                          <div className="flex items-center gap-4 text-xs text-text-tertiary">
+                            <span>Category: {ticket.category}</span>
+                            <span>•</span>
+                            <span>Created: {formatDate(ticket.createdAt)}</span>
+                            <span>•</span>
+                            <span>Updated: {formatDate(ticket.updatedAt)}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-text-secondary">
+                          <FiMessageSquare className="w-4 h-4" />
+                          <span>{ticket.responseCount || 0}</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-text-secondary">
-                      <FiMessageSquare className="w-4 h-4" />
-                      <span>{ticket.responses.length}</span>
-                    </div>
-                  </div>
+                  </Card>
                 </div>
-              </Card>
-            );
-          })}
+              );
+            })
+          )}
         </div>
 
         {/* New Ticket Form Modal */}
@@ -323,6 +406,7 @@ const Support = () => {
                       variant="outline"
                       fullWidth
                       onClick={() => setShowNewTicketForm(false)}
+                      disabled={submitting}
                     >
                       Cancel
                     </Button>
@@ -330,8 +414,9 @@ const Support = () => {
                       type="submit"
                       fullWidth
                       icon={<Send className="w-4 h-4" />}
+                      disabled={submitting}
                     >
-                      Submit Ticket
+                      {submitting ? 'Submitting...' : 'Submit Ticket'}
                     </Button>
                   </div>
                 </form>
@@ -351,7 +436,7 @@ const Support = () => {
                 <div className="flex items-start justify-between mb-6">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-3">
-                      <span className="text-sm font-mono text-text-tertiary">{selectedTicket.id}</span>
+                      <span className="text-sm font-mono text-text-tertiary">#{selectedTicket.id.slice(0, 8)}</span>
                       <Badge variant={getStatusColor(selectedTicket.status)} size="medium">
                         {selectedTicket.status}
                       </Badge>
@@ -363,7 +448,7 @@ const Support = () => {
                     <p className="text-text-secondary mb-3">{selectedTicket.description}</p>
                     <div className="flex items-center gap-3 text-sm text-text-tertiary">
                       <Badge variant="default" size="small">{selectedTicket.category}</Badge>
-                      <span>Created: {new Date(selectedTicket.createdAt).toLocaleDateString()}</span>
+                      <span>Created: {formatDate(selectedTicket.createdAt)}</span>
                     </div>
                   </div>
                   <button
@@ -377,24 +462,32 @@ const Support = () => {
                 {/* Conversation */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-text">Conversation</h3>
-                  {selectedTicket.responses.map((response) => (
-                    <div
-                      key={response.id}
-                      className={`p-4 rounded-xl ${
-                        response.isSupport
-                          ? 'bg-blue-50 border border-blue-200'
-                          : 'bg-white/50 border border-gray-200'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className={`text-sm font-semibold ${response.isSupport ? 'text-blue-600' : 'text-text'}`}>
-                          {response.from}
-                        </span>
-                        <span className="text-xs text-text-tertiary">{response.timestamp}</span>
-                      </div>
-                      <p className="text-text-secondary">{response.message}</p>
+                  
+                  {responses.length === 0 ? (
+                    <div className="text-center py-8 text-text-secondary">
+                      <FiMessageSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p>No responses yet. Our support team will respond soon.</p>
                     </div>
-                  ))}
+                  ) : (
+                    responses.map((response) => (
+                      <div
+                        key={response.id}
+                        className={`p-4 rounded-xl ${
+                          response.isSupport
+                            ? 'bg-blue-50 border border-blue-200'
+                            : 'bg-white/50 border border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className={`text-sm font-semibold ${response.isSupport ? 'text-blue-600' : 'text-text'}`}>
+                            {response.from}
+                          </span>
+                          <span className="text-xs text-text-tertiary">{formatDateTime(response.createdAt)}</span>
+                        </div>
+                        <p className="text-text-secondary">{response.message}</p>
+                      </div>
+                    ))
+                  )}
                 </div>
 
                 {/* Reply Form */}
@@ -404,11 +497,32 @@ const Support = () => {
                       <input
                         type="text"
                         placeholder="Type your reply..."
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendReply();
+                          }
+                        }}
                         className="flex-1 px-4 py-3 bg-white/60 backdrop-blur-sm border border-gray-200 rounded-xl text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
                       />
-                      <Button icon={<Send className="w-4 h-4" />}>
+                      <Button 
+                        icon={<Send className="w-4 h-4" />}
+                        onClick={handleSendReply}
+                        disabled={!replyText.trim()}
+                      >
                         Send
                       </Button>
+                    </div>
+                  </div>
+                )}
+
+                {selectedTicket.status === 'resolved' && (
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <div className="flex items-center gap-2 text-success">
+                      <FiCheckCircle className="w-5 h-5" />
+                      <span className="font-medium">This ticket has been resolved</span>
                     </div>
                   </div>
                 )}

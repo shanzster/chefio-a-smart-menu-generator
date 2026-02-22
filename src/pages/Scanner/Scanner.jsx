@@ -6,7 +6,9 @@ import Button from '../../components/common/Button/Button';
 import Card from '../../components/common/Card/Card';
 import Badge from '../../components/common/Badge/Badge';
 import Navigation from '../../components/layout/Navigation/Navigation';
+import Layout from '../../components/layout/Layout/Layout';
 import { toast } from '../../store/toastStore';
+import { useAuthStore } from '../../store/authStore';
 import { recognizeFoodFromCanvas, preloadModels } from '../../services/ai/tensorflowService';
 
 // Icon mapping for ingredients
@@ -21,7 +23,7 @@ const getIngredientIcon = (category) => {
   return iconMap[category] || Apple;
 };
 
-// Mock ingredient recognition database
+// Mock ingredient recognition database (Fallback)
 const ingredientDatabase = {
   'chicken': { name: 'Chicken', category: 'Protein', description: 'Lean poultry meat' },
   'tomato': { name: 'Tomato', category: 'Vegetable', description: 'Red, juicy fruit' },
@@ -42,6 +44,7 @@ const ingredientDatabase = {
 
 const Scanner = () => {
   const navigate = useNavigate();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [isScanning, setIsScanning] = useState(false);
   const [scannedIngredients, setScannedIngredients] = useState([]);
   const [currentScan, setCurrentScan] = useState(null);
@@ -51,11 +54,28 @@ const Scanner = () => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
+  useEffect(() => {
+    // Preload TensorFlow models on component mount
+    console.log('🚀 [SCANNER] Preloading TensorFlow.js models...');
+    toast.info('Scanner is now ready 💡');
+
+    // Preload TensorFlow models
+    preloadModels().then(() => {
+      console.log('✅ [SCANNER] TensorFlow.js models ready!');
+    }).catch(error => {
+      console.error('❌ [SCANNER] Failed to load TensorFlow.js models:', error);
+    });
+
+    return () => {
+      stopScanning();
+    };
+  }, []);
+
   const startScanning = async () => {
     setIsScanning(true); // Set state first to render video element
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } 
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
       });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -100,42 +120,43 @@ const Scanner = () => {
       if (recognizedFoods.length > 0) {
         console.log('✅ [SCANNER] Recognition successful!');
         console.log('📊 [SCANNER] Found', recognizedFoods.length, 'food items');
-        
+
         // Show top result
         const topResult = recognizedFoods[0];
         console.log('🥇 [SCANNER] Top result:', topResult.name, `(${topResult.confidence}%)`);
-        
+
         setCurrentScan({
           name: topResult.name,
           category: topResult.category,
-          description: `Identified with ${topResult.confidence}% confidence`,
+          description: `Identified with ${topResult.confidence}% confidence (TensorFlow.js)`,
           confidence: topResult.confidence
         });
-        
+
         // Store alternatives for user to choose
         const alts = recognizedFoods.slice(1, 4);
         setAlternatives(alts);
         console.log('🔄 [SCANNER] Alternatives:', alts.map(a => `${a.name} (${a.confidence}%)`));
-        
-        toast.success(`Identified: ${topResult.name}! (${topResult.confidence}% confident)`);
+
+        toast.success(`Identified: ${topResult.name}!`);
       } else {
         console.warn('⚠️ [SCANNER] No food items recognized');
         toast.error('No food items recognized. Try again or add manually.');
-        
-        // Fallback to mock data
+
+        // Fallback to mock data (last resort)
         console.log('🔄 [SCANNER] Falling back to mock data...');
         const ingredients = Object.keys(ingredientDatabase);
         const randomIngredient = ingredients[Math.floor(Math.random() * ingredients.length)];
         const identified = ingredientDatabase[randomIngredient];
         identified.confidence = Math.floor(Math.random() * 20) + 70;
         setCurrentScan(identified);
+        console.log('🎲 [SCANNER] Mock result:', identified.name);
       }
     } catch (error) {
-      console.error('💥 [SCANNER] Recognition error:', error.message);
+      console.error('💥 [SCANNER] Error:', error.message);
       console.error('📚 [SCANNER] Error stack:', error.stack);
-      
-      toast.error('Failed to identify ingredient. Please try again.');
-      
+
+      toast.error('Failed to identify. Please try again.');
+
       // Fallback to mock data if AI fails
       console.log('🔄 [SCANNER] Falling back to mock data...');
       const ingredients = Object.keys(ingredientDatabase);
@@ -158,15 +179,15 @@ const Scanner = () => {
 
     // Convert scanned ingredients to simple names
     const ingredientNames = scannedIngredients.map(ing => ing.name);
-    
-    // Navigate to Menu Generator with ingredients
-    navigate('/cook/menu-generator', {
-      state: { 
+
+    // Navigate to PUBLIC Menu Generator with ingredients
+    navigate('/menu-generator', {
+      state: {
         ingredients: ingredientNames,
-        fromScanner: true 
+        fromScanner: true
       }
     });
-    
+
     toast.success(`Forwarding ${ingredientNames.length} ingredients to Menu Generator!`);
   };
 
@@ -189,27 +210,87 @@ const Scanner = () => {
     }
   };
 
-  useEffect(() => {
-    // Preload TensorFlow models on component mount
-    console.log('🚀 [SCANNER] Preloading AI models...');
-    preloadModels().then(() => {
-      console.log('✅ [SCANNER] AI models ready!');
-      toast.success('AI models loaded! Ready to scan! 🤖');
-    }).catch(error => {
-      console.error('❌ [SCANNER] Failed to load AI models:', error);
-    });
-
-    return () => {
-      stopScanning();
-    };
-  }, []);
-
   return (
-    <div className="min-h-screen bg-background relative">
-      {/* Navigation Component */}
-      <Navigation />
+    <>
+      {isAuthenticated ? (
+        // Authenticated users see the scanner within the Layout (with sidebar)
+        <Layout>
+          <ScannerContent
+            isScanning={isScanning}
+            scannedIngredients={scannedIngredients}
+            currentScan={currentScan}
+            alternatives={alternatives}
+            manualInput={manualInput}
+            isIdentifying={isIdentifying}
+            videoRef={videoRef}
+            canvasRef={canvasRef}
+            startScanning={startScanning}
+            stopScanning={stopScanning}
+            captureAndIdentify={captureAndIdentify}
+            confirmIngredient={confirmIngredient}
+            removeIngredient={removeIngredient}
+            addManualIngredient={addManualIngredient}
+            goToMenuGenerator={goToMenuGenerator}
+            setCurrentScan={setCurrentScan}
+            setAlternatives={setAlternatives}
+            setManualInput={setManualInput}
+          />
+        </Layout>
+      ) : (
+        // Public users see the scanner with public navigation
+        <div className="min-h-screen bg-background relative">
+          <Navigation />
+          <div className="pt-20">
+            <ScannerContent
+              isScanning={isScanning}
+              scannedIngredients={scannedIngredients}
+              currentScan={currentScan}
+              alternatives={alternatives}
+              manualInput={manualInput}
+              isIdentifying={isIdentifying}
+              videoRef={videoRef}
+              canvasRef={canvasRef}
+              startScanning={startScanning}
+              stopScanning={stopScanning}
+              captureAndIdentify={captureAndIdentify}
+              confirmIngredient={confirmIngredient}
+              removeIngredient={removeIngredient}
+              addManualIngredient={addManualIngredient}
+              goToMenuGenerator={goToMenuGenerator}
+              setCurrentScan={setCurrentScan}
+              setAlternatives={setAlternatives}
+              setManualInput={setManualInput}
+            />
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
 
-      <div className="p-6 pt-20 max-w-[600px] mx-auto">
+// Extracted Scanner Content Component
+const ScannerContent = ({
+  isScanning,
+  scannedIngredients,
+  currentScan,
+  alternatives,
+  manualInput,
+  isIdentifying,
+  videoRef,
+  canvasRef,
+  startScanning,
+  stopScanning,
+  captureAndIdentify,
+  confirmIngredient,
+  removeIngredient,
+  addManualIngredient,
+  goToMenuGenerator,
+  setCurrentScan,
+  setAlternatives,
+  setManualInput
+}) => {
+  return (
+    <div className="p-6 max-w-[600px] mx-auto">
         {/* Scanner Section */}
         <section className="mb-8">
           <h1 className="text-2xl font-bold text-text mb-2">Ingredient Scanner</h1>
@@ -230,7 +311,7 @@ const Scanner = () => {
                     className="w-full h-full object-cover scale-x-[-1]"
                   />
                   <canvas ref={canvasRef} className="hidden" />
-                  
+
                   {/* Identifying overlay */}
                   {isIdentifying && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center">
@@ -241,7 +322,7 @@ const Scanner = () => {
                       </div>
                     </div>
                   )}
-                  
+
                   {/* Scanning overlay with frame */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="relative w-64 h-64">
@@ -250,7 +331,7 @@ const Scanner = () => {
                       <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-primary rounded-tr-lg" />
                       <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-primary rounded-bl-lg" />
                       <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-primary rounded-br-lg" />
-                      
+
                       {/* Scanning line animation */}
                       <div className="absolute inset-0 overflow-hidden">
                         <div className="absolute w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-scan-line" />
@@ -320,7 +401,26 @@ const Scanner = () => {
                     </Badge>
                   </div>
                   <p className="text-sm text-text-secondary mb-2">{currentScan.description}</p>
-                  <Badge variant="primary" size="small">{currentScan.category}</Badge>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="primary" size="small">{currentScan.category}</Badge>
+                    {currentScan.nutrition && (
+                      <>
+                        <Badge variant="default" size="small">
+                          {currentScan.nutrition.calories} cal
+                        </Badge>
+                        <Badge variant="default" size="small">
+                          P: {currentScan.nutrition.protein}g
+                        </Badge>
+                        <Badge variant="default" size="small">
+                          C: {currentScan.nutrition.carbs}g
+                        </Badge>
+                        <Badge variant="default" size="small">
+                          F: {currentScan.nutrition.fat}g
+                        </Badge>
+                        <span className="text-xs text-text-tertiary">per {currentScan.nutrition.per}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={confirmIngredient}
@@ -340,7 +440,7 @@ const Scanner = () => {
                   <FiX className="text-xl" />
                 </button>
               </div>
-              
+
               {/* Alternative Suggestions */}
               {alternatives.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
@@ -401,9 +501,9 @@ const Scanner = () => {
               {scannedIngredients.map((ing, index) => {
                 const IngredientIcon = getIngredientIcon(ing.category);
                 return (
-                  <Card 
-                    key={ing.name} 
-                    variant="default" 
+                  <Card
+                    key={ing.name}
+                    variant="default"
                     padding="medium"
                     className="flex items-center gap-4 animate-fade-in-up"
                     style={{ animationDelay: `${index * 0.05}s` }}
@@ -429,9 +529,9 @@ const Scanner = () => {
 
             {/* Action Buttons */}
             <div className="mt-6 space-y-3">
-              <Button 
-                fullWidth 
-                size="large" 
+              <Button
+                fullWidth
+                size="large"
                 icon={<FiArrowRight />}
                 onClick={goToMenuGenerator}
               >
@@ -465,7 +565,6 @@ const Scanner = () => {
           </Card>
         )}
       </div>
-    </div>
   );
 };
 

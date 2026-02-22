@@ -1,31 +1,85 @@
-import React, { useState } from 'react';
-import { FiSearch, FiFilter, FiPlus, FiClock, FiUsers, FiHeart } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import { FiSearch, FiFilter, FiPlus, FiClock, FiUsers, FiHeart, FiTrash2, FiEdit, FiX, FiExternalLink, FiBookmark } from 'react-icons/fi';
 import { Circle, Leaf, Star } from 'lucide-react';
 import Button from '../../../components/common/Button/Button';
 import Card from '../../../components/common/Card/Card';
 import Badge from '../../../components/common/Badge/Badge';
 import Layout from '../../../components/layout/Layout/Layout';
+import Modal from '../../../components/common/Modal/Modal';
+import CreateRecipeForm from '../../../components/forms/CreateRecipeForm';
+import { useAuthStore } from '../../../store/authStore';
+import { getUserSavedRecipes, removeSavedRecipe, createRecipe } from '../../../services/firebase/recipeService';
+import { toast } from '../../../store/toastStore';
+import { getYouTubeVideoId, getYouTubeEmbedUrl } from '../../../utils/youtubeHelper';
 
-const categories = ['All', 'Favorites', 'Recent', 'Breakfast', 'Lunch', 'Dinner', 'Desserts'];
-
-const recipes = [
-  { id: 1, title: 'Avocado Toast', time: '10 mins', servings: 2, category: 'Breakfast', icon: Circle, isFavorite: true },
-  { id: 2, title: 'Caesar Salad', time: '15 mins', servings: 3, category: 'Lunch', icon: Leaf, isFavorite: false },
-  { id: 3, title: 'Beef Steak', time: '30 mins', servings: 2, category: 'Dinner', icon: Circle, isFavorite: true },
-  { id: 4, title: 'Chocolate Cake', time: '45 mins', servings: 8, category: 'Desserts', icon: Star, isFavorite: false },
-  { id: 5, title: 'Pancakes', time: '20 mins', servings: 4, category: 'Breakfast', icon: Circle, isFavorite: true },
-  { id: 6, title: 'Sushi Roll', time: '40 mins', servings: 4, category: 'Dinner', icon: Circle, isFavorite: false }
-];
+const categories = ['All', 'Breakfast', 'Lunch', 'Dinner', 'Snacks', 'Desserts'];
 
 const Recipes = () => {
+  const user = useAuthStore((state) => state.user);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [recipes, setRecipes] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+
+  const fetchRecipes = async () => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      const savedRecipes = await getUserSavedRecipes();
+      setRecipes(savedRecipes);
+    } catch (error) {
+      console.error('Error fetching recipes:', error);
+      toast.error('Failed to load recipes');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteRecipe = async (recipeId) => {
+    if (!user) return;
+    if (!confirm('Are you sure you want to remove this recipe from your collection?')) return;
+    
+    try {
+      await removeSavedRecipe(recipeId);
+      setRecipes(recipes.filter(r => r.id !== recipeId));
+      toast.success('Recipe removed! 🗑️');
+      setSelectedRecipe(null);
+    } catch (error) {
+      console.error('Error removing recipe:', error);
+      toast.error('Failed to remove recipe');
+    }
+  };
+
+  const handleCreateRecipe = async (recipeData) => {
+    if (!user) return;
+    setIsCreating(true);
+    
+    try {
+      await createRecipe(recipeData);
+      await fetchRecipes(); // Refresh the list
+      setShowCreateModal(false);
+      toast.success('Recipe created successfully! 🎉');
+    } catch (error) {
+      console.error('Error creating recipe:', error);
+      toast.error('Failed to create recipe. Please try again.');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecipes();
+  }, [user]);
 
   const filteredRecipes = recipes.filter(recipe => {
-    const matchesCategory = selectedCategory === 'All' || 
-      (selectedCategory === 'Favorites' && recipe.isFavorite) ||
-      recipe.category === selectedCategory;
-    const matchesSearch = recipe.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === 'All' || recipe.category === selectedCategory;
+    const matchesSearch = (
+      (recipe.name || recipe.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (recipe.description || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
     return matchesCategory && matchesSearch;
   });
 
@@ -33,12 +87,11 @@ const Recipes = () => {
     <Layout>
       <div className="p-6 lg:p-12 lg:py-16 max-w-[1400px] mx-auto">
         {/* Header */}
-        <header className="flex items-center justify-between mb-8 lg:mb-12">
+        <header className="mb-8 lg:mb-12">
           <div>
             <h1 className="text-2xl lg:text-4xl font-bold text-text mb-2">My Recipes</h1>
             <p className="text-sm lg:text-base text-text-secondary">Manage and organize your culinary creations</p>
           </div>
-          <Button icon={<FiPlus />} size="medium" className="lg:scale-110">Add Recipe</Button>
         </header>
 
         {/* Search */}
@@ -53,6 +106,13 @@ const Recipes = () => {
               className="flex-1 bg-transparent border-none outline-none text-base lg:text-lg text-text placeholder:text-text-tertiary"
             />
           </div>
+          <button 
+            onClick={() => setShowCreateModal(true)}
+            className="w-12 h-12 lg:w-14 lg:h-14 flex items-center justify-center glass-enhanced rounded-xl lg:rounded-2xl text-white bg-primary hover:bg-primary-dark hover:scale-110 transition-all duration-300 shadow-lg hover:shadow-xl active:scale-95"
+            aria-label="Add Recipe"
+          >
+            <FiPlus className="text-xl lg:text-2xl" />
+          </button>
           <button className="w-12 h-12 lg:w-14 lg:h-14 flex items-center justify-center glass-enhanced rounded-xl lg:rounded-2xl text-text-secondary hover:text-primary hover:scale-110 transition-all duration-300">
             <FiFilter className="text-xl lg:text-2xl" />
           </button>
@@ -81,47 +141,220 @@ const Recipes = () => {
         </p>
 
         {/* Recipe Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
-          {filteredRecipes.map((recipe, index) => (
-            <Card 
-              key={recipe.id}
-              variant="glass"
-              padding="none"
-              hover
-              className="animate-fade-in-up"
-              style={{ animationDelay: `${index * 0.05}s` }}
-            >
-              <div className="relative h-[100px] md:h-[120px] bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center rounded-t-xl">
-                <recipe.icon className="w-12 h-12 md:w-14 md:h-14 text-primary" />
-                <button 
-                  className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-sm transition-all ${
-                    recipe.isFavorite 
-                      ? 'bg-error/15 text-error' 
-                      : 'bg-white/80 text-text-tertiary hover:scale-110'
-                  }`}
-                >
-                  <FiHeart className={recipe.isFavorite ? 'fill-current' : ''} />
-                </button>
-              </div>
-              <div className="p-4">
-                <h3 className="text-base font-semibold text-text mb-1">{recipe.title}</h3>
-                <div className="flex gap-4 text-xs text-text-tertiary mb-2">
-                  <span className="flex items-center gap-1"><FiClock /> {recipe.time}</span>
-                  <span className="flex items-center gap-1"><FiUsers /> {recipe.servings}</span>
+        {isLoading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Card key={i} variant="glass" padding="none" className="animate-pulse">
+                <div className="h-[100px] md:h-[120px] bg-gray-200 rounded-t-xl" />
+                <div className="p-4">
+                  <div className="h-4 bg-gray-200 rounded mb-2" />
+                  <div className="h-3 bg-gray-200 rounded mb-2 w-3/4" />
+                  <div className="h-3 bg-gray-200 rounded w-1/2" />
                 </div>
-                <Badge variant="default" size="small">{recipe.category}</Badge>
-              </div>
-            </Card>
-          ))}
-        </div>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+            {filteredRecipes.map((recipe, index) => (
+              <Card 
+                key={recipe.id}
+                variant="glass"
+                padding="none"
+                hover
+                className="animate-fade-in-up cursor-pointer"
+                style={{ animationDelay: `${index * 0.05}s` }}
+                onClick={() => setSelectedRecipe(recipe)}
+              >
+                <div className="relative h-[100px] md:h-[120px] bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center rounded-t-xl overflow-hidden">
+                  {recipe.image ? (
+                    <img src={recipe.image} alt={recipe.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Star className="w-12 h-12 md:w-14 md:h-14 text-primary" />
+                  )}
+                </div>
+                <div className="p-4">
+                  <h3 className="text-base font-semibold text-text mb-1 line-clamp-1">{recipe.name || recipe.title}</h3>
+                  <div className="flex gap-4 text-xs text-text-tertiary mb-2">
+                    <span className="flex items-center gap-1"><FiClock /> {recipe.prepTime || recipe.cookTime || 30} mins</span>
+                    <span className="flex items-center gap-1"><FiUsers /> {recipe.servings || 4}</span>
+                  </div>
+                  <Badge variant="default" size="small">{recipe.difficulty || recipe.category || 'Easy'}</Badge>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {/* Empty state */}
-        {filteredRecipes.length === 0 && (
+        {!isLoading && filteredRecipes.length === 0 && (
           <div className="text-center py-16">
             <FiSearch className="w-16 h-16 mx-auto mb-4 opacity-50 text-text-tertiary" />
             <h3 className="text-lg font-semibold text-text mb-2">No recipes found</h3>
-            <p className="text-base text-text-tertiary">Try adjusting your search or filters</p>
+            <p className="text-base text-text-tertiary">
+              {searchQuery || selectedCategory !== 'All' 
+                ? 'Try adjusting your search or filters' 
+                : 'Start by adding your first recipe or save recipes from Browse Recipes!'}
+            </p>
           </div>
+        )}
+
+        {/* Recipe Detail Modal */}
+        {selectedRecipe && (
+          <Modal isOpen={!!selectedRecipe} onClose={() => setSelectedRecipe(null)} title={selectedRecipe.name}>
+            <div className="space-y-6 p-4 md:p-6">
+              {/* Recipe Image */}
+              {selectedRecipe.image && (
+                <div className="relative w-full h-64 rounded-xl overflow-hidden">
+                  <img 
+                    src={selectedRecipe.image} 
+                    alt={selectedRecipe.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+
+              {/* Recipe Info */}
+              <div className="flex flex-wrap gap-4">
+                <Badge variant="primary">{selectedRecipe.difficulty}</Badge>
+                <span className="flex items-center gap-2 text-text-secondary">
+                  <FiClock className="text-primary" />
+                  {selectedRecipe.prepTime} mins
+                </span>
+                <span className="flex items-center gap-2 text-text-secondary">
+                  <FiUsers className="text-primary" />
+                  {selectedRecipe.servings} servings
+                </span>
+              </div>
+
+              {/* Description */}
+              {selectedRecipe.description && (
+                <div>
+                  <h3 className="text-lg font-semibold text-text mb-2">Description</h3>
+                  <p className="text-text-secondary leading-relaxed">{selectedRecipe.description}</p>
+                </div>
+              )}
+
+              {/* Nutrition */}
+              {selectedRecipe.nutrition && (
+                <div>
+                  <h3 className="text-lg font-semibold text-text mb-3">Nutrition (per serving)</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-primary/10 rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold text-primary">{selectedRecipe.nutrition.calories}</div>
+                      <div className="text-xs text-text-secondary">Calories</div>
+                    </div>
+                    <div className="bg-success/10 rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold text-success">{selectedRecipe.nutrition.protein}g</div>
+                      <div className="text-xs text-text-secondary">Protein</div>
+                    </div>
+                    <div className="bg-warning/10 rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold text-warning">{selectedRecipe.nutrition.carbs}g</div>
+                      <div className="text-xs text-text-secondary">Carbs</div>
+                    </div>
+                    <div className="bg-error/10 rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold text-error">{selectedRecipe.nutrition.fat}g</div>
+                      <div className="text-xs text-text-secondary">Fat</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Ingredients */}
+              {selectedRecipe.ingredients && selectedRecipe.ingredients.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-text mb-3">Ingredients</h3>
+                  <ul className="space-y-2">
+                    {selectedRecipe.ingredients.map((ingredient, index) => (
+                      <li key={index} className="flex items-start gap-2 text-text-secondary">
+                        <span className="text-primary mt-1">•</span>
+                        <span>{ingredient.original || ingredient.name || ingredient}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Instructions */}
+              {selectedRecipe.instructions && selectedRecipe.instructions.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-text mb-3">Instructions</h3>
+                  <ol className="space-y-3">
+                    {selectedRecipe.instructions.map((instruction, index) => (
+                      <li key={index} className="flex gap-3">
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-sm font-semibold">
+                          {index + 1}
+                        </span>
+                        <span className="text-text-secondary flex-1">{instruction}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              {/* YouTube Tutorial */}
+              {(() => {
+                const videoId = getYouTubeVideoId(selectedRecipe.videoUrl);
+                const embedUrl = getYouTubeEmbedUrl(videoId);
+                
+                return (
+                  <div>
+                    <h3 className="text-lg font-semibold text-text mb-3">Video Tutorial</h3>
+                    {embedUrl ? (
+                      <div className="relative w-full rounded-xl overflow-hidden shadow-lg" style={{ paddingBottom: '56.25%' }}>
+                        <iframe
+                          className="absolute top-0 left-0 w-full h-full"
+                          src={embedUrl}
+                          title="YouTube video tutorial"
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        ></iframe>
+                      </div>
+                    ) : (
+                      <div className="bg-gray-100 rounded-xl p-8 text-center">
+                        <div className="text-4xl mb-2">📹</div>
+                        <p className="text-text-secondary">No video tutorial available for this recipe</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <Button 
+                  variant="error" 
+                  icon={<FiTrash2 />}
+                  onClick={() => handleDeleteRecipe(selectedRecipe.id)}
+                >
+                  Delete
+                </Button>
+                {selectedRecipe.sourceUrl && (
+                  <Button 
+                    variant="secondary" 
+                    icon={<FiExternalLink />}
+                    onClick={() => window.open(selectedRecipe.sourceUrl, '_blank')}
+                  >
+                    View Source
+                  </Button>
+                )}
+              </div>
+            </div>
+          </Modal>
+        )}
+
+        {/* Create Recipe Modal - Full Form */}
+        {showCreateModal && (
+          <Modal isOpen={showCreateModal} onClose={() => !isCreating && setShowCreateModal(false)} title="Create New Recipe">
+            <div className="max-h-[70vh] overflow-y-auto p-1">
+              <CreateRecipeForm
+                onSubmit={handleCreateRecipe}
+                onCancel={() => setShowCreateModal(false)}
+                isLoading={isCreating}
+              />
+            </div>
+          </Modal>
         )}
       </div>
     </Layout>

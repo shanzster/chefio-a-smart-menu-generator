@@ -3,6 +3,9 @@ import {
   signInWithEmailAndPassword, 
   signOut,
   updateProfile,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
   sendPasswordResetEmail,
   onAuthStateChanged
 } from "firebase/auth";
@@ -267,16 +270,25 @@ export const onAuthChange = (callback) => {
     if (user) {
       const userDoc = await getDoc(doc(db, "users", user.uid));
       if (userDoc.exists()) {
+        const userData = userDoc.data();
         callback({
           uid: user.uid,
           email: user.email,
-          name: userDoc.data().name,
-          role: userDoc.data().role
+          displayName: userData.name || user.displayName,
+          name: userData.name,
+          role: userData.role,
+          bio: userData.profile?.bio || '',
+          location: userData.profile?.location || '',
+          phone: userData.profile?.phone || '',
+          createdAt: userData.createdAt,
+          stats: userData.stats,
+          preferences: userData.preferences
         });
       } else {
         callback({
           uid: user.uid,
           email: user.email,
+          displayName: user.displayName || "User",
           name: user.displayName || "User",
           role: "cook"
         });
@@ -306,9 +318,9 @@ export const getCurrentUser = async () => {
 };
 
 /**
- * Update user profile
+ * Update user profile by userId (admin function)
  */
-export const updateUserProfile = async (userId, updates) => {
+export const updateUserProfileById = async (userId, updates) => {
   try {
     const userRef = doc(db, "users", userId);
     await setDoc(userRef, {
@@ -372,3 +384,63 @@ export const checkEmailExists = async (email) => {
     return false;
   }
 };
+
+/**
+ * Update user profile (for current logged-in user)
+ */
+export const updateUserProfile = async (updates) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error('No user logged in');
+
+    // Update Firebase Auth profile if displayName is provided
+    if (updates.displayName) {
+      await updateProfile(user, {
+        displayName: updates.displayName
+      });
+    }
+
+    // Update Firestore user document
+    const userRef = doc(db, "users", user.uid);
+    const updateData = {
+      updatedAt: new Date().toISOString()
+    };
+
+    if (updates.displayName) updateData.name = updates.displayName;
+    if (updates.bio !== undefined) updateData['profile.bio'] = updates.bio;
+    if (updates.location !== undefined) updateData['profile.location'] = updates.location;
+    if (updates.phone !== undefined) updateData['profile.phone'] = updates.phone;
+
+    await setDoc(userRef, updateData, { merge: true });
+
+    console.log("✅ User profile updated successfully");
+    return true;
+  } catch (error) {
+    console.error("❌ Error updating profile:", error);
+    throw error;
+  }
+};
+
+/**
+ * Update user password
+ */
+export const updateUserPassword = async (currentPassword, newPassword) => {
+  try {
+    const user = auth.currentUser;
+    if (!user || !user.email) throw new Error('No user logged in');
+
+    // Re-authenticate user before changing password
+    const credential = EmailAuthProvider.credential(user.email, currentPassword);
+    await reauthenticateWithCredential(user, credential);
+
+    // Update password
+    await updatePassword(user, newPassword);
+
+    console.log("✅ Password updated successfully");
+    return true;
+  } catch (error) {
+    console.error("❌ Error updating password:", error);
+    throw error;
+  }
+};
+

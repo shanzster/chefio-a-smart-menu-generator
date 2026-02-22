@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { FiArrowRight, FiBook, FiActivity, FiShare2, FiCamera, FiClock, FiUsers, FiZap, FiCheck, FiTrendingUp, FiAward, FiHeart, FiTarget, FiLayers, FiBarChart, FiMenu, FiX } from 'react-icons/fi';
 import { User, Circle, Star, Square, Leaf, Lightbulb, Pizza, Salad, Beef, UtensilsCrossed, CookingPot } from 'lucide-react';
 import Button from '../../components/common/Button/Button';
+import AddToHomeButton from '../../components/common/AddToHomeButton/AddToHomeButton';
 
 const features = [
   {
@@ -374,9 +375,12 @@ const Landing = () => {
             <Button to="/menu-generator" size="large" icon={<FiArrowRight />} iconPosition="right" className="glow">
               Start Cooking Now
             </Button>
-            <Button to="/register" variant="glass" size="large" className="hover-lift">
-              Create Account
-            </Button>
+            <AddToHomeButton 
+              variant="glass" 
+              size="large" 
+              className="hover-lift"
+              customText="Install the App"
+            />
           </div>
           
           {/* Cooking stats */}
@@ -588,9 +592,12 @@ const Landing = () => {
             <Button to="/menu-generator" size="large" className="flex-1 glow">
               Start Cooking Free
             </Button>
-            <Button to="/register" variant="outline" size="large" className="flex-1 hover-lift">
-              Create Account
-            </Button>
+            <AddToHomeButton 
+              variant="outline" 
+              size="large" 
+              className="flex-1 hover-lift"
+              customText="Install the App"
+            />
           </div>
         </div>
       </section>
@@ -609,9 +616,12 @@ const Landing = () => {
             <Button to="/menu-generator" size="large" className="bg-white hover:bg-white/90 hover:scale-105">
               <span className="text-primary">Try It Free Now</span>
             </Button>
-            <Button to="/register" variant="outline" size="large" className="border-2 border-white text-white hover:bg-white/10 hover:scale-105">
-              Create Account
-            </Button>
+            <AddToHomeButton 
+              variant="outline" 
+              size="large" 
+              className="border-2 border-white text-white hover:bg-white/10 hover:scale-105"
+              customText="Install the App"
+            />
           </div>
           <div className="mt-12 flex flex-wrap justify-center gap-8 text-white/80">
             <div className="flex items-center gap-2">

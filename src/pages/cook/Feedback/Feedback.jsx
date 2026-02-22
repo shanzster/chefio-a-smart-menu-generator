@@ -1,131 +1,137 @@
-import React, { useState } from 'react';
-import { FiMessageSquare, FiStar, FiThumbsUp, FiThumbsDown, FiFilter, FiTrendingUp } from 'react-icons/fi';
-import { MessageCircle, Heart } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FiMessageSquare, FiStar, FiTrendingUp, FiFilter } from 'react-icons/fi';
+import { MessageCircle, Heart, Eye } from 'lucide-react';
 import Layout from '../../../components/layout/Layout/Layout';
 import Card from '../../../components/common/Card/Card';
 import Badge from '../../../components/common/Badge/Badge';
+import { useAuthStore } from '../../../store/authStore';
+import { getCookQRCodes, getQRFeedback } from '../../../services/firebase/qrCodeService';
+import { toast } from '../../../store/toastStore';
 
 const Feedback = () => {
+  const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
+  const [qrCodes, setQrCodes] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState('all');
-  const [selectedRecipe, setSelectedRecipe] = useState(null);
 
-  // Mock feedback data
-  const sharedRecipes = [
-    {
-      id: 1,
-      name: 'Chicken Adobo',
-      sharedDate: '2026-02-01',
-      views: 245,
-      saves: 89,
-      avgRating: 4.8,
-      totalFeedback: 34,
-      feedbacks: [
-        {
-          id: 1,
-          user: 'Maria Santos',
-          rating: 5,
-          comment: 'Amazing recipe! My family loved it. The flavors were perfect.',
-          date: '2026-02-03',
-          helpful: 12,
-        },
-        {
-          id: 2,
-          user: 'Juan Dela Cruz',
-          rating: 5,
-          comment: 'Best adobo recipe I\'ve tried. Very authentic taste!',
-          date: '2026-02-02',
-          helpful: 8,
-        },
-        {
-          id: 3,
-          user: 'Ana Reyes',
-          rating: 4,
-          comment: 'Great recipe! I added a bit more vinegar for extra tang.',
-          date: '2026-02-02',
-          helpful: 5,
-        },
-      ]
-    },
-    {
-      id: 2,
-      name: 'Pasta Carbonara',
-      sharedDate: '2026-01-28',
-      views: 189,
-      saves: 67,
-      avgRating: 4.6,
-      totalFeedback: 28,
-      feedbacks: [
-        {
-          id: 4,
-          user: 'Carlo Mendoza',
-          rating: 5,
-          comment: 'Creamy and delicious! Restaurant quality.',
-          date: '2026-01-30',
-          helpful: 15,
-        },
-        {
-          id: 5,
-          user: 'Lisa Garcia',
-          rating: 4,
-          comment: 'Very good! I used turkey bacon and it still turned out great.',
-          date: '2026-01-29',
-          helpful: 7,
-        },
-      ]
-    },
-    {
-      id: 3,
-      name: 'Vegetable Stir Fry',
-      sharedDate: '2026-01-25',
-      views: 156,
-      saves: 45,
-      avgRating: 4.3,
-      totalFeedback: 19,
-      feedbacks: [
-        {
-          id: 6,
-          user: 'Pedro Ramos',
-          rating: 4,
-          comment: 'Healthy and tasty! Perfect for weeknight dinners.',
-          date: '2026-01-27',
-          helpful: 6,
-        },
-        {
-          id: 7,
-          user: 'Sofia Cruz',
-          rating: 5,
-          comment: 'Love this recipe! So easy and quick to make.',
-          date: '2026-01-26',
-          helpful: 4,
-        },
-      ]
-    },
-  ];
+  useEffect(() => {
+    const loadQRCodes = async () => {
+      if (!user) return;
+
+      try {
+        const codes = await getCookQRCodes(user.uid);
+        
+        // Load feedback count for each QR code
+        const codesWithFeedback = await Promise.all(
+          codes.map(async (code) => {
+            try {
+              const feedback = await getQRFeedback(code.id);
+              const avgRating = feedback.length > 0
+                ? feedback.reduce((sum, f) => sum + (f.ratings?.overall || 0), 0) / feedback.length
+                : 0;
+              
+              return {
+                ...code,
+                feedbackList: feedback,
+                totalFeedback: feedback.length,
+                avgRating: avgRating.toFixed(1)
+              };
+            } catch (error) {
+              console.error(`Error loading feedback for ${code.id}:`, error);
+              return {
+                ...code,
+                feedbackList: [],
+                totalFeedback: 0,
+                avgRating: 0
+              };
+            }
+          })
+        );
+
+        setQrCodes(codesWithFeedback);
+      } catch (error) {
+        console.error('Error loading QR codes:', error);
+        toast.error('Failed to load feedback data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadQRCodes();
+  }, [user]);
 
   const filters = [
-    { id: 'all', label: 'All Recipes', count: sharedRecipes.length },
-    { id: 'highest', label: 'Highest Rated', count: sharedRecipes.filter(r => r.avgRating >= 4.5).length },
-    { id: 'most-viewed', label: 'Most Viewed', count: sharedRecipes.length },
-    { id: 'recent', label: 'Recent', count: sharedRecipes.length },
+    { id: 'all', label: 'All Recipes', count: qrCodes.length },
+    { id: 'highest', label: 'Highest Rated', count: qrCodes.filter(r => r.avgRating >= 4.5).length },
+    { id: 'most-feedback', label: 'Most Feedback', count: qrCodes.length },
+    { id: 'recent', label: 'Recent', count: qrCodes.length },
   ];
 
-  const filteredRecipes = sharedRecipes.filter(recipe => {
+  const filteredRecipes = qrCodes.filter(recipe => {
     if (selectedFilter === 'highest') return recipe.avgRating >= 4.5;
     return true;
   }).sort((a, b) => {
-    if (selectedFilter === 'most-viewed') return b.views - a.views;
-    if (selectedFilter === 'recent') return new Date(b.sharedDate) - new Date(a.sharedDate);
+    if (selectedFilter === 'most-feedback') return b.totalFeedback - a.totalFeedback;
+    if (selectedFilter === 'recent') return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
     return 0;
   });
+
+  const totalViews = qrCodes.reduce((sum, r) => sum + (r.scans || 0), 0);
+  const totalFeedback = qrCodes.reduce((sum, r) => sum + r.totalFeedback, 0);
+  const avgRating = qrCodes.length > 0
+    ? (qrCodes.reduce((sum, r) => sum + parseFloat(r.avgRating), 0) / qrCodes.length).toFixed(1)
+    : 0;
 
   const renderStars = (rating) => {
     return Array.from({ length: 5 }, (_, i) => (
       <FiStar
         key={i}
-        className={`w-4 h-4 ${i < rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+        className={`w-4 h-4 ${i < Math.round(rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
       />
     ));
   };
+
+  const handleRecipeClick = (recipe) => {
+    // Navigate to feedback dashboard with the recipe selected
+    navigate(`/cook/feedback-dashboard?recipe=${recipe.id}`);
+  };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-text-secondary">Loading feedback...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (qrCodes.length === 0) {
+    return (
+      <Layout>
+        <div className="p-6 lg:p-12 max-w-[1200px] mx-auto">
+          <Card variant="glass" className="p-12 text-center">
+            <MessageCircle className="w-16 h-16 text-text-tertiary mx-auto mb-4 opacity-50" />
+            <h2 className="text-xl font-bold text-text mb-2">No Feedback Yet</h2>
+            <p className="text-text-secondary mb-6">
+              Generate QR codes for your recipes to start receiving feedback from guests.
+            </p>
+            <a
+              href="/cook/qr-generator"
+              className="inline-block px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+            >
+              Generate QR Code
+            </a>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -147,33 +153,25 @@ const Feedback = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <Card variant="glass" className="border border-white/50">
             <div className="p-4">
-              <div className="text-2xl font-bold text-primary mb-1">
-                {sharedRecipes.reduce((sum, r) => sum + r.views, 0)}
-              </div>
-              <div className="text-sm text-text-secondary">Total Views</div>
+              <div className="text-2xl font-bold text-primary mb-1">{totalViews}</div>
+              <div className="text-sm text-text-secondary">Total Scans</div>
             </div>
           </Card>
           <Card variant="glass" className="border border-white/50">
             <div className="p-4">
-              <div className="text-2xl font-bold text-secondary mb-1">
-                {sharedRecipes.reduce((sum, r) => sum + r.saves, 0)}
-              </div>
-              <div className="text-sm text-text-secondary">Total Saves</div>
+              <div className="text-2xl font-bold text-secondary mb-1">{qrCodes.length}</div>
+              <div className="text-sm text-text-secondary">QR Codes</div>
             </div>
           </Card>
           <Card variant="glass" className="border border-white/50">
             <div className="p-4">
-              <div className="text-2xl font-bold text-success mb-1">
-                {(sharedRecipes.reduce((sum, r) => sum + r.avgRating, 0) / sharedRecipes.length).toFixed(1)}
-              </div>
+              <div className="text-2xl font-bold text-success mb-1">{avgRating}</div>
               <div className="text-sm text-text-secondary">Avg Rating</div>
             </div>
           </Card>
           <Card variant="glass" className="border border-white/50">
             <div className="p-4">
-              <div className="text-2xl font-bold text-warning mb-1">
-                {sharedRecipes.reduce((sum, r) => sum + r.totalFeedback, 0)}
-              </div>
+              <div className="text-2xl font-bold text-warning mb-1">{totalFeedback}</div>
               <div className="text-sm text-text-secondary">Total Feedback</div>
             </div>
           </Card>
@@ -207,24 +205,34 @@ const Feedback = () => {
         {/* Recipe List */}
         <div className="space-y-6">
           {filteredRecipes.map((recipe) => (
-            <Card
+            <div
               key={recipe.id}
-              variant="glass"
-              hover
-              className="border border-white/50 cursor-pointer"
-              onClick={() => setSelectedRecipe(recipe)}
+              onClick={() => handleRecipeClick(recipe)}
+              className="cursor-pointer"
             >
-              <div className="p-6">
+              <Card
+                variant="glass"
+                hover
+                className="border border-white/50 transition-all hover:shadow-lg"
+              >
+                <div className="p-6">
                 {/* Recipe Header */}
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-xl font-bold text-text mb-2">{recipe.name}</h3>
-                    <div className="flex items-center gap-4 text-sm text-text-secondary">
-                      <span>Shared on {new Date(recipe.sharedDate).toLocaleDateString()}</span>
-                      <span>•</span>
-                      <span>{recipe.views} views</span>
-                      <span>•</span>
-                      <span>{recipe.saves} saves</span>
+                  <div className="flex items-start gap-4 flex-1">
+                    {recipe.recipeImage && (
+                      <img
+                        src={recipe.recipeImage}
+                        alt={recipe.recipeName}
+                        className="w-20 h-20 rounded-lg object-cover"
+                      />
+                    )}
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-text mb-2">{recipe.recipeName || recipe.title}</h3>
+                      <div className="flex items-center gap-4 text-sm text-text-secondary">
+                        <span>Created {recipe.createdAt ? new Date(recipe.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</span>
+                        <span>•</span>
+                        <span>{recipe.scans || 0} scans</span>
+                      </div>
                     </div>
                   </div>
                   <Badge variant="success" size="large">
@@ -246,111 +254,60 @@ const Feedback = () => {
                   </div>
                   <div className="p-3 bg-green-50 rounded-xl border border-green-200">
                     <div className="flex items-center gap-2 text-green-600 mb-1">
-                      <FiTrendingUp className="w-4 h-4" />
-                      <span className="text-lg font-bold">{recipe.views}</span>
+                      <Eye className="w-4 h-4" />
+                      <span className="text-lg font-bold">{recipe.scans || 0}</span>
                     </div>
-                    <div className="text-xs text-green-800">Views</div>
+                    <div className="text-xs text-green-800">Scans</div>
                   </div>
                   <div className="p-3 bg-purple-50 rounded-xl border border-purple-200">
                     <div className="flex items-center gap-2 text-purple-600 mb-1">
-                      <Heart className="w-4 h-4" />
-                      <span className="text-lg font-bold">{recipe.saves}</span>
+                      <FiTrendingUp className="w-4 h-4" />
+                      <span className="text-lg font-bold">{recipe.avgRating}</span>
                     </div>
-                    <div className="text-xs text-purple-800">Saves</div>
+                    <div className="text-xs text-purple-800">Rating</div>
                   </div>
                 </div>
 
                 {/* Recent Feedback Preview */}
-                <div className="space-y-3">
-                  <h4 className="text-sm font-semibold text-text">Recent Feedback</h4>
-                  {recipe.feedbacks.slice(0, 2).map((feedback) => (
-                    <div key={feedback.id} className="p-3 bg-white/50 rounded-xl">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <div className="font-medium text-text text-sm">{feedback.user}</div>
-                          <div className="flex items-center gap-1 mt-1">
-                            {renderStars(feedback.rating)}
+                {recipe.feedbackList && recipe.feedbackList.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold text-text">Recent Feedback</h4>
+                    {recipe.feedbackList.slice(0, 2).map((feedback) => (
+                      <div key={feedback.id} className="p-3 bg-white/50 rounded-xl">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <div className="font-medium text-text text-sm">{feedback.guestName || 'Anonymous'}</div>
+                            <div className="flex items-center gap-1 mt-1">
+                              {renderStars(feedback.ratings?.overall || 0)}
+                            </div>
                           </div>
+                          <span className="text-xs text-text-tertiary">
+                            {feedback.createdAt ? new Date(feedback.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}
+                          </span>
                         </div>
-                        <span className="text-xs text-text-tertiary">
-                          {new Date(feedback.date).toLocaleDateString()}
-                        </span>
+                        {feedback.feedback && (
+                          <p className="text-sm text-text-secondary line-clamp-2">"{feedback.feedback}"</p>
+                        )}
                       </div>
-                      <p className="text-sm text-text-secondary">{feedback.comment}</p>
-                    </div>
-                  ))}
-                  {recipe.feedbacks.length > 2 && (
-                    <button className="text-sm font-medium text-primary hover:underline">
-                      View all {recipe.totalFeedback} feedback →
-                    </button>
-                  )}
-                </div>
+                    ))}
+                    {recipe.totalFeedback > 2 && (
+                      <div className="text-sm font-medium text-primary">
+                        View all {recipe.totalFeedback} feedback →
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {recipe.totalFeedback === 0 && (
+                  <div className="text-center py-4 text-text-tertiary text-sm">
+                    No feedback yet. Share your QR code to get started!
+                  </div>
+                )}
               </div>
             </Card>
+            </div>
           ))}
         </div>
-
-        {/* Detailed Feedback Modal */}
-        {selectedRecipe && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedRecipe(null)} />
-            
-            <Card variant="glass" className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto border border-white/50">
-              <div className="p-6 lg:p-8">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-text mb-2">{selectedRecipe.name}</h2>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1">
-                        {renderStars(Math.round(selectedRecipe.avgRating))}
-                      </div>
-                      <span className="text-lg font-bold text-primary">{selectedRecipe.avgRating}</span>
-                      <span className="text-sm text-text-secondary">({selectedRecipe.totalFeedback} reviews)</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setSelectedRecipe(null)}
-                    className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-                  >
-                    ×
-                  </button>
-                </div>
-
-                {/* All Feedback */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-text">All Feedback</h3>
-                  {selectedRecipe.feedbacks.map((feedback) => (
-                    <div key={feedback.id} className="p-4 bg-white/50 rounded-xl border border-gray-200">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <div className="font-semibold text-text mb-1">{feedback.user}</div>
-                          <div className="flex items-center gap-1">
-                            {renderStars(feedback.rating)}
-                          </div>
-                        </div>
-                        <span className="text-sm text-text-tertiary">
-                          {new Date(feedback.date).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <p className="text-text-secondary mb-3">{feedback.comment}</p>
-                      <div className="flex items-center gap-4">
-                        <button className="flex items-center gap-2 text-sm text-text-secondary hover:text-primary transition-colors">
-                          <FiThumbsUp className="w-4 h-4" />
-                          Helpful ({feedback.helpful})
-                        </button>
-                        <button className="flex items-center gap-2 text-sm text-text-secondary hover:text-error transition-colors">
-                          <FiThumbsDown className="w-4 h-4" />
-                          Not Helpful
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Card>
-          </div>
-        )}
       </div>
     </Layout>
   );

@@ -10,6 +10,7 @@ import {
   where, 
   orderBy,
   limit,
+  setDoc,
   serverTimestamp 
 } from "firebase/firestore";
 import { db, auth } from "../../config/firebase";
@@ -81,7 +82,7 @@ export const getRecipeById = async (recipeId) => {
     if (docSnap.exists()) {
       return { id: docSnap.id, ...docSnap.data() };
     } else {
-      throw new Error("Recipe not found");
+      return null;
     }
   } catch (error) {
     console.error("Error getting recipe:", error);
@@ -246,6 +247,193 @@ export const incrementSaves = async (recipeId) => {
     }
   } catch (error) {
     console.error("Error incrementing saves:", error);
+    throw error;
+  }
+};
+
+/**
+ * Save a recipe to user's saved recipes (stored in user document)
+ */
+export const saveRecipeToUser = async (recipe) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const userDocRef = doc(db, "users", user.uid);
+    const userDoc = await getDoc(userDocRef);
+    
+    // Get current saved recipes or initialize empty object
+    const currentData = userDoc.exists() ? userDoc.data() : {};
+    const savedRecipes = currentData.savedRecipes || {};
+    
+    // Check if recipe already saved
+    if (savedRecipes[recipe.id]) {
+      throw new Error("Recipe already saved!");
+    }
+    
+    // Add recipe with metadata
+    savedRecipes[recipe.id] = {
+      ...recipe,
+      savedAt: new Date().toISOString(),
+      isFavorite: false
+    };
+    
+    // Update user document
+    await setDoc(userDocRef, {
+      ...currentData,
+      savedRecipes,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    
+    return savedRecipes[recipe.id];
+  } catch (error) {
+    console.error("Error saving recipe to user:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get user's saved recipes from their user document
+ */
+export const getUserSavedRecipes = async () => {
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const userDocRef = doc(db, "users", user.uid);
+    const userDoc = await getDoc(userDocRef);
+    
+    if (!userDoc.exists()) {
+      return [];
+    }
+    
+    const savedRecipes = userDoc.data().savedRecipes || {};
+    
+    // Convert map to array and sort by savedAt
+    const recipesArray = Object.entries(savedRecipes).map(([id, recipe]) => ({
+      ...recipe,
+      id
+    }));
+    
+    // Sort by savedAt (most recent first)
+    recipesArray.sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
+    
+    return recipesArray;
+  } catch (error) {
+    console.error("Error getting saved recipes:", error);
+    throw error;
+  }
+};
+
+/**
+ * Remove a saved recipe from user's document
+ */
+export const removeSavedRecipe = async (recipeId) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const userDocRef = doc(db, "users", user.uid);
+    const userDoc = await getDoc(userDocRef);
+    
+    if (!userDoc.exists()) {
+      throw new Error("User document not found");
+    }
+    
+    const savedRecipes = userDoc.data().savedRecipes || {};
+    
+    // Remove the recipe
+    delete savedRecipes[recipeId];
+    
+    // Update user document
+    await updateDoc(userDocRef, {
+      savedRecipes,
+      updatedAt: serverTimestamp()
+    });
+    
+    return true;
+  } catch (error) {
+    console.error("Error removing saved recipe:", error);
+    throw error;
+  }
+};
+
+/**
+ * Toggle favorite status for a saved recipe
+ */
+export const toggleSavedRecipeFavorite = async (recipeId) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const userDocRef = doc(db, "users", user.uid);
+    const userDoc = await getDoc(userDocRef);
+    
+    if (!userDoc.exists()) {
+      throw new Error("User document not found");
+    }
+    
+    const savedRecipes = userDoc.data().savedRecipes || {};
+    
+    if (!savedRecipes[recipeId]) {
+      throw new Error("Recipe not found in saved recipes");
+    }
+    
+    // Toggle favorite
+    savedRecipes[recipeId].isFavorite = !savedRecipes[recipeId].isFavorite;
+    
+    // Update user document
+    await updateDoc(userDocRef, {
+      savedRecipes,
+      updatedAt: serverTimestamp()
+    });
+    
+    return savedRecipes[recipeId].isFavorite;
+  } catch (error) {
+    console.error("Error toggling favorite:", error);
+    throw error;
+  }
+};
+
+
+
+
+/**
+ * Save feedback for a recipe
+ */
+export const saveFeedback = async (recipeId, feedbackData) => {
+  try {
+    const feedbackRef = collection(db, "recipes", recipeId, "feedback");
+    const feedback = {
+      ...feedbackData,
+      createdAt: serverTimestamp()
+    };
+    
+    const docRef = await addDoc(feedbackRef, feedback);
+    return { id: docRef.id, ...feedback };
+  } catch (error) {
+    console.error("Error saving feedback:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get all feedback for a recipe
+ */
+export const getRecipeFeedback = async (recipeId) => {
+  try {
+    const feedbackRef = collection(db, "recipes", recipeId, "feedback");
+    const q = query(feedbackRef, orderBy("createdAt", "desc"));
+    const querySnapshot = await getDocs(q);
+    
+    const feedback = [];
+    querySnapshot.forEach((doc) => {
+      feedback.push({ id: doc.id, ...doc.data() });
+    });
+    
+    return feedback;
+  } catch (error) {
+    console.error("Error getting feedback:", error);
     throw error;
   }
 };

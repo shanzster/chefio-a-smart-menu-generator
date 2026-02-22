@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { FiPlus, FiX, FiZap, FiClock, FiUsers, FiLock, FiArrowRight, FiTrendingUp, FiAward, FiHeart } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { FiPlus, FiX, FiZap, FiClock, FiUsers, FiLock, FiArrowRight, FiTrendingUp, FiAward, FiHeart, FiAlertCircle } from 'react-icons/fi';
 import { ChefHat, Sparkles, UtensilsCrossed, User, Flame, Star, TrendingUp } from 'lucide-react';
 import Button from '../../components/common/Button/Button';
 import Card from '../../components/common/Card/Card';
 import Badge from '../../components/common/Badge/Badge';
 import Input from '../../components/common/Input/Input';
 import Navigation from '../../components/layout/Navigation/Navigation';
+import { searchRecipesByIngredients } from '../../services/ai/spoonacularService';
+import { toast } from '../../store/toastStore';
+import { canGenerate, getRemainingGenerations, incrementUsage, getUsageStats } from '../../utils/rateLimiter';
 
 const suggestedIngredients = [
   { name: 'Chicken', category: 'Protein', icon: '🍗' },
@@ -23,51 +26,37 @@ const suggestedIngredients = [
   { name: 'Fish', category: 'Protein', icon: '🐟' }
 ];
 
-const generatedRecipes = [
-  { 
-    id: 1, 
-    title: 'Creamy Chicken Pasta', 
-    description: 'Rich and creamy pasta with tender chicken pieces', 
-    time: '35 mins', 
-    servings: 4, 
-    difficulty: 'Easy', 
-    matchScore: 95,
-    calories: 580,
-    tags: ['Italian', 'Comfort Food'],
-    trending: true
-  },
-  { 
-    id: 2, 
-    title: 'Chicken Fried Rice', 
-    description: 'Classic Asian comfort food', 
-    time: '25 mins', 
-    servings: 3, 
-    difficulty: 'Easy', 
-    matchScore: 88,
-    calories: 420,
-    tags: ['Asian', 'Quick'],
-    popular: true
-  },
-  { 
-    id: 3, 
-    title: 'Chicken Omelette', 
-    description: 'Protein-packed breakfast option', 
-    time: '15 mins', 
-    servings: 2, 
-    difficulty: 'Easy', 
-    matchScore: 82,
-    calories: 320,
-    tags: ['Breakfast', 'High Protein'],
-    healthy: true
-  }
-];
+// No mock data needed - using real API
 
 const MenuGenerator = () => {
+  const location = useLocation();
   const [ingredients, setIngredients] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [recipes, setRecipes] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [usageStats, setUsageStats] = useState(getUsageStats());
+
+  // Update usage stats on mount and after each generation
+  useEffect(() => {
+    setUsageStats(getUsageStats());
+  }, []);
+
+  // Check if ingredients were passed from Scanner
+  useEffect(() => {
+    if (location.state?.ingredients && location.state?.fromScanner) {
+      const scannedIngredients = location.state.ingredients;
+      setIngredients(scannedIngredients);
+
+      // Show welcome message
+      toast.success(`Loaded ${scannedIngredients.length} ingredients from Scanner! 📸`);
+
+      // Auto-scroll to ingredients section
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 100);
+    }
+  }, [location.state]);
 
   const addIngredient = (ingredient) => {
     if (ingredient && !ingredients.includes(ingredient)) {
@@ -80,13 +69,41 @@ const MenuGenerator = () => {
     setIngredients(ingredients.filter(i => i !== ingredient));
   };
 
-  const handleGenerate = () => {
-    if (ingredients.length === 0) return;
+  const handleGenerate = async () => {
+    if (ingredients.length === 0) {
+      toast.error('Please add at least one ingredient');
+      return;
+    }
+
+    // Check rate limit
+    if (!canGenerate()) {
+      toast.error(`You've reached your daily limit of 5 generations. Resets in ${usageStats.resetIn}`);
+      return;
+    }
+
     setIsGenerating(true);
-    setTimeout(() => {
+
+    try {
+      const options = {
+        number: 4,
+        ranking: 1
+      };
+
+      const generatedRecipes = await searchRecipesByIngredients(ingredients, options);
+
       setRecipes(generatedRecipes);
+
+      // Increment usage and update stats
+      const newUsage = incrementUsage();
+      setUsageStats(getUsageStats());
+
+      toast.success(`Found ${generatedRecipes.length} delicious recipes! (${newUsage.remaining} generations left today)`);
+    } catch (error) {
+      console.error('Recipe generation error:', error);
+      toast.error('Failed to generate recipes. Please try again.');
+    } finally {
       setIsGenerating(false);
-    }, 1500);
+    }
   };
 
   const handleKeyPress = (e) => {
@@ -110,19 +127,20 @@ const MenuGenerator = () => {
 
         {/* Header */}
         <div className="text-center mb-12 animate-fade-in-down">
-          <div className="relative inline-block mb-6">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-2xl blur-xl animate-pulse" />
-            <div className="relative w-20 h-20 mx-auto bg-gradient-to-br from-primary to-secondary rounded-2xl flex items-center justify-center shadow-lg">
-              <Sparkles className="w-10 h-10 text-white" />
-            </div>
+          <div className="relative inline-block mb-2">
+            <img 
+              src="/chefio.png" 
+              alt="Chefio Logo" 
+              className="w-48 h-48 mx-auto object-contain"
+            />
           </div>
           <h1 className="text-3xl font-bold text-text mb-3 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            AI Menu Generator
+            Chefio can help!
           </h1>
           <p className="text-base text-text-secondary leading-relaxed max-w-[400px] mx-auto mb-6">
             Transform your ingredients into delicious recipes with AI-powered suggestions
           </p>
-          
+
           {/* Stats Bar */}
           <div className="flex items-center justify-center gap-6 mb-4">
             <div className="flex items-center gap-2 text-sm">
@@ -144,6 +162,17 @@ const MenuGenerator = () => {
               <span className="text-text-secondary">Free Forever</span>
             </div>
           </div>
+
+          {/* Usage Stats for Visitors */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-full text-sm">
+            <FiAlertCircle className="text-amber-600" />
+            <span className="text-amber-800 font-medium">
+              {usageStats.remaining} of {usageStats.total} free generations remaining
+            </span>
+            {usageStats.remaining === 0 && (
+              <span className="text-amber-600">• Resets in {usageStats.resetIn}</span>
+            )}
+          </div>
         </div>
 
         {/* Ingredients Section */}
@@ -162,7 +191,7 @@ const MenuGenerator = () => {
                 </div>
               </div>
               {ingredients.length > 0 && (
-                <button 
+                <button
                   onClick={() => setIngredients([])}
                   className="text-xs text-error hover:underline"
                 >
@@ -170,7 +199,7 @@ const MenuGenerator = () => {
                 </button>
               )}
             </div>
-            
+
             {/* Input */}
             <div className="flex gap-2 mb-6">
               <div className="flex-1">
@@ -192,15 +221,15 @@ const MenuGenerator = () => {
               <div className="mb-6 p-4 bg-gradient-to-br from-primary/5 to-secondary/5 rounded-xl border border-primary/10">
                 <div className="flex flex-wrap gap-2">
                   {ingredients.map((ingredient, index) => (
-                    <span 
-                      key={ingredient} 
+                    <span
+                      key={ingredient}
                       className="inline-flex items-center gap-2 px-4 py-2 bg-white shadow-sm text-primary rounded-full text-sm font-medium animate-scale-in hover:shadow-md transition-all group"
                       style={{ animationDelay: `${index * 0.05}s` }}
                     >
                       <span className="text-base">{suggestedIngredients.find(s => s.name === ingredient)?.icon || '🥘'}</span>
                       {ingredient}
-                      <button 
-                        onClick={() => removeIngredient(ingredient)} 
+                      <button
+                        onClick={() => removeIngredient(ingredient)}
                         className="w-5 h-5 flex items-center justify-center bg-primary/10 rounded-full hover:bg-error hover:text-white transition-all group-hover:scale-110"
                       >
                         <FiX className="text-xs" />
@@ -219,11 +248,10 @@ const MenuGenerator = () => {
                   <button
                     key={category}
                     onClick={() => setSelectedCategory(category)}
-                    className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                      selectedCategory === category
-                        ? 'bg-primary text-white shadow-md'
-                        : 'bg-white text-text-secondary hover:bg-primary/10 hover:text-primary'
-                    }`}
+                    className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedCategory === category
+                      ? 'bg-primary text-white shadow-md'
+                      : 'bg-white text-text-secondary hover:bg-primary/10 hover:text-primary'
+                      }`}
                   >
                     {category}
                   </button>
@@ -262,16 +290,21 @@ const MenuGenerator = () => {
                   </span>
                 </div>
               )}
-              <Button 
-                fullWidth 
-                size="large" 
-                onClick={handleGenerate} 
-                loading={isGenerating} 
-                disabled={ingredients.length === 0} 
+              <Button
+                fullWidth
+                size="large"
+                onClick={handleGenerate}
+                loading={isGenerating}
+                disabled={ingredients.length === 0 || !canGenerate()}
                 icon={<FiZap />}
                 className="bg-gradient-to-r from-primary to-secondary hover:shadow-xl"
               >
-                {isGenerating ? 'Generating Recipes...' : `Generate ${ingredients.length >= 2 ? 'Amazing' : ''} Recipes`}
+                {isGenerating
+                  ? 'Generating Recipes...'
+                  : !canGenerate()
+                    ? `Daily Limit Reached - Resets in ${usageStats.resetIn}`
+                    : `Generate Recipes (${usageStats.remaining} left today)`
+                }
               </Button>
             </div>
           </div>
@@ -302,72 +335,67 @@ const MenuGenerator = () => {
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {recipes.map((recipe, index) => (
-                <Card 
-                  key={recipe.id} 
-                  variant="glass" 
-                  padding="none" 
-                  hover 
-                  className="animate-fade-in-up group overflow-hidden" 
+                <Card
+                  key={recipe.id}
+                  variant="glass"
+                  padding="none"
+                  hover
+                  className="animate-fade-in-up group overflow-hidden"
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
                   {/* Recipe Image/Header */}
-                  <div className="relative h-[140px] bg-gradient-to-br from-primary/10 via-secondary/10 to-amber-500/10 flex items-center justify-center overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <UtensilsCrossed className="w-16 h-16 text-primary/40 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300" />
-                    
-                    {/* Match Score Badge */}
-                    <div className="absolute top-3 right-3 flex flex-col gap-2">
-                      <div className="px-3 py-1 bg-white/95 backdrop-blur-sm rounded-full text-xs font-bold text-success shadow-lg flex items-center gap-1">
-                        <Flame className="w-3 h-3" />
-                        {recipe.matchScore}% match
+                  {recipe.image ? (
+                    <div className="relative h-[140px] overflow-hidden">
+                      <img
+                        src={recipe.image}
+                        alt={recipe.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+
+                      {/* Ingredient Match Badge */}
+                      <div className="absolute top-3 right-3">
+                        <div className="px-3 py-1 bg-white/95 backdrop-blur-sm rounded-full text-xs font-bold text-success shadow-lg flex items-center gap-1">
+                          <Flame className="w-3 h-3" />
+                          {recipe.usedIngredientCount}/{recipe.usedIngredientCount + recipe.missedIngredientCount} ingredients
+                        </div>
                       </div>
-                      {recipe.trending && (
-                        <div className="px-3 py-1 bg-primary/95 backdrop-blur-sm rounded-full text-xs font-semibold text-white shadow-lg flex items-center gap-1">
-                          <TrendingUp className="w-3 h-3" />
-                          Trending
-                        </div>
-                      )}
-                      {recipe.popular && (
-                        <div className="px-3 py-1 bg-amber-500/95 backdrop-blur-sm rounded-full text-xs font-semibold text-white shadow-lg flex items-center gap-1">
-                          <Star className="w-3 h-3" />
-                          Popular
-                        </div>
-                      )}
-                      {recipe.healthy && (
-                        <div className="px-3 py-1 bg-success/95 backdrop-blur-sm rounded-full text-xs font-semibold text-white shadow-lg flex items-center gap-1">
-                          <FiHeart className="w-3 h-3" />
-                          Healthy
-                        </div>
-                      )}
                     </div>
-                  </div>
+                  ) : (
+                    <div className="relative h-[140px] bg-gradient-to-br from-primary/10 via-secondary/10 to-amber-500/10 flex items-center justify-center overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <UtensilsCrossed className="w-16 h-16 text-primary/40 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300" />
+                    </div>
+                  )}
 
                   {/* Recipe Content */}
                   <div className="p-5">
                     <h3 className="text-lg font-bold text-text mb-2 group-hover:text-primary transition-colors">
-                      {recipe.title}
+                      {recipe.name}
                     </h3>
                     <p className="text-sm text-text-secondary mb-4 line-clamp-2">
                       {recipe.description}
                     </p>
 
-                    {/* Tags */}
-                    <div className="flex flex-wrap gap-1 mb-4">
-                      {recipe.tags.map((tag) => (
-                        <span 
-                          key={tag}
-                          className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-md font-medium"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
+                    {/* Tags - Show diets if available */}
+                    {recipe.diets && recipe.diets.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-4">
+                        {recipe.diets.slice(0, 2).map((diet) => (
+                          <span
+                            key={diet}
+                            className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-md font-medium capitalize"
+                          >
+                            {diet}
+                          </span>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Stats */}
                     <div className="grid grid-cols-3 gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
                       <div className="text-center">
                         <FiClock className="w-4 h-4 mx-auto mb-1 text-text-tertiary" />
-                        <div className="text-xs font-semibold text-text">{recipe.time}</div>
+                        <div className="text-xs font-semibold text-text">{recipe.prepTime} min</div>
                       </div>
                       <div className="text-center border-x border-gray-200">
                         <FiUsers className="w-4 h-4 mx-auto mb-1 text-text-tertiary" />
@@ -375,7 +403,7 @@ const MenuGenerator = () => {
                       </div>
                       <div className="text-center">
                         <FiZap className="w-4 h-4 mx-auto mb-1 text-text-tertiary" />
-                        <div className="text-xs font-semibold text-text">{recipe.calories} cal</div>
+                        <div className="text-xs font-semibold text-text">{recipe.nutrition?.calories || 0} cal</div>
                       </div>
                     </div>
 
@@ -385,7 +413,11 @@ const MenuGenerator = () => {
 
                     {/* Actions */}
                     <div className="flex gap-2">
-                      <Button variant="outline" className="flex-1 group-hover:border-primary group-hover:text-primary">
+                      <Button
+                        variant="outline"
+                        className="flex-1 group-hover:border-primary group-hover:text-primary"
+                        onClick={() => window.open(recipe.sourceUrl, '_blank')}
+                      >
                         View Recipe
                       </Button>
                       <Link to="/register" className="flex-1">

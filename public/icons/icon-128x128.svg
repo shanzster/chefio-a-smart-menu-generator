@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f97316;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ea580c;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="128" height="128" fill="url(#grad)" rx="12.8"/>
+  
+  <!-- Chef hat -->
+  <g transform="translate(64, 64)">
+    <!-- Hat top (circle) -->
+    <circle cx="0" cy="-12.8" r="32" fill="white"/>
+    
+    <!-- Hat base (rectangle) -->
+    <rect x="-38.4" y="6.4" width="76.8" height="19.2" fill="white" rx="2.56"/>
+    
+    <!-- Letter C -->
+    <text x="0" y="-6.4" 
+          font-family="Arial, sans-serif" 
+          font-size="44.8" 
+          font-weight="bold" 
+          fill="#f97316" 
+          text-anchor="middle" 
+          dominant-baseline="middle">C</text>
+  </g>
+  
+  <!-- Utensils decoration -->
+  <g transform="translate(25.6, 96)" opacity="0.3">
+    <!-- Fork -->
+    <path d="M 0 0 L 0 19.2 M -2.56 0 L -2.56 10.24 M 2.56 0 L 2.56 10.24" 
+          stroke="white" stroke-width="1.92" fill="none" stroke-linecap="round"/>
+  </g>
+  
+  <g transform="translate(102.4, 96)" opacity="0.3">
+    <!-- Spoon -->
+    <ellipse cx="0" cy="0" rx="3.2" ry="4.48" fill="white"/>
+    <rect x="-0.96" y="2.56" width="1.92" height="16.64" fill="white" rx="0.64"/>
+  </g>
+</svg>

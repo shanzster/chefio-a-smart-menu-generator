@@ -20,17 +20,25 @@ export const searchRecipesByIngredients = async (ingredients, options = {}) => {
     let url = `${BASE_URL}/recipes/findByIngredients?ingredients=${ingredientsStr}&number=${number}&ranking=${ranking}&ignorePantry=${ignorePantry}&apiKey=${API_KEY}`;
 
     const response = await fetch(url);
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.message || 'Failed to fetch recipes');
     }
 
     const recipes = await response.json();
-    
+
     // Get detailed information for each recipe with nutrition filters
+    // Preserve ingredient match counts from the initial search
     const detailedRecipes = await Promise.all(
-      recipes.map(recipe => getRecipeDetails(recipe.id))
+      recipes.map(async (recipe) => {
+        const details = await getRecipeDetails(recipe.id);
+        return {
+          ...details,
+          usedIngredientCount: recipe.usedIngredientCount || 0,
+          missedIngredientCount: recipe.missedIngredientCount || 0
+        };
+      })
     );
 
     // Apply filters on the detailed recipes
@@ -40,28 +48,28 @@ export const searchRecipesByIngredients = async (ingredients, options = {}) => {
     if (diet) {
       filteredRecipes = filteredRecipes.filter(recipe => {
         // Check if recipe matches dietary restriction
-        return recipe.diets?.includes(diet.toLowerCase()) || 
-               recipe.dishTypes?.some(type => type.toLowerCase().includes(diet.toLowerCase()));
+        return recipe.diets?.includes(diet.toLowerCase()) ||
+          recipe.dishTypes?.some(type => type.toLowerCase().includes(diet.toLowerCase()));
       });
     }
 
     // Filter by max calories
     if (maxCalories) {
-      filteredRecipes = filteredRecipes.filter(recipe => 
+      filteredRecipes = filteredRecipes.filter(recipe =>
         recipe.nutrition.calories <= maxCalories
       );
     }
 
     // Filter by min protein
     if (minProtein) {
-      filteredRecipes = filteredRecipes.filter(recipe => 
+      filteredRecipes = filteredRecipes.filter(recipe =>
         recipe.nutrition.protein >= minProtein
       );
     }
 
     // Filter by max carbs
     if (maxCarbs) {
-      filteredRecipes = filteredRecipes.filter(recipe => 
+      filteredRecipes = filteredRecipes.filter(recipe =>
         recipe.nutrition.carbs <= maxCarbs
       );
     }
@@ -79,15 +87,15 @@ export const searchRecipesByIngredients = async (ingredients, options = {}) => {
 export const getRecipeDetails = async (recipeId) => {
   try {
     const url = `${BASE_URL}/recipes/${recipeId}/information?includeNutrition=true&apiKey=${API_KEY}`;
-    
+
     const response = await fetch(url);
-    
+
     if (!response.ok) {
       throw new Error('Failed to fetch recipe details');
     }
 
     const recipe = await response.json();
-    
+
     // Transform to our format
     return {
       id: recipe.id,
@@ -105,8 +113,8 @@ export const getRecipeDetails = async (recipeId) => {
         unit: ing.unit,
         original: ing.original
       })) || [],
-      instructions: recipe.analyzedInstructions?.[0]?.steps?.map(step => step.step) || 
-                   (recipe.instructions ? [recipe.instructions] : ['No instructions available']),
+      instructions: recipe.analyzedInstructions?.[0]?.steps?.map(step => step.step) ||
+        (recipe.instructions ? [recipe.instructions] : ['No instructions available']),
       nutrition: {
         calories: Math.round(recipe.nutrition?.nutrients?.find(n => n.name === 'Calories')?.amount || 0),
         protein: Math.round(recipe.nutrition?.nutrients?.find(n => n.name === 'Protein')?.amount || 0),
@@ -133,13 +141,13 @@ export const getRandomRecipes = async (number = 3, tags = []) => {
     const url = `${BASE_URL}/recipes/random?number=${number}${tagsStr}&apiKey=${API_KEY}`;
 
     const response = await fetch(url);
-    
+
     if (!response.ok) {
       throw new Error('Failed to fetch random recipes');
     }
 
     const data = await response.json();
-    
+
     return data.recipes.map(recipe => ({
       id: recipe.id,
       name: recipe.title,
