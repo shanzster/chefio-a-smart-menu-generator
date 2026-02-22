@@ -28,6 +28,7 @@ export default defineConfig({
         ]
       },
       workbox: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB (for TensorFlow.js bundle)
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp}'],
         navigateFallback: '/index.html',
         navigateFallbackAllowlist: [/^(?!\/__).*/],
