@@ -15,6 +15,7 @@ const CreateRecipeForm = ({ onSubmit, onCancel, isLoading }) => {
     prepTime: '',
     servings: '',
     image: '',
+    videoUrl: '',
     ingredients: [''],
     instructions: [''],
     nutrition: {
@@ -146,7 +147,7 @@ const CreateRecipeForm = ({ onSubmit, onCancel, isLoading }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Basic Info */}
-      <div className="space-y-4">
+      <div className="space-y-4 mb-6">
         <h3 className="text-lg font-semibold text-text">Basic Information</h3>
         
         <Input
@@ -278,10 +279,27 @@ const CreateRecipeForm = ({ onSubmit, onCancel, isLoading }) => {
             required
           />
         </div>
+
+        {/* YouTube Video URL */}
+        <div>
+          <label className="block text-sm font-medium text-text mb-2">
+            YouTube Video Tutorial (Optional)
+          </label>
+          <Input
+            name="videoUrl"
+            value={formData.videoUrl}
+            onChange={handleChange}
+            placeholder="https://www.youtube.com/watch?v=..."
+            icon={<FiImage />}
+          />
+          <p className="text-xs text-text-tertiary mt-1">
+            Paste a YouTube video URL to add a video tutorial to your recipe
+          </p>
+        </div>
       </div>
 
       {/* Nutrition */}
-      <div className="space-y-4">
+      <div className="space-y-4 mb-6">
         <h3 className="text-lg font-semibold text-text">Nutrition (per serving)</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Input
@@ -320,7 +338,7 @@ const CreateRecipeForm = ({ onSubmit, onCancel, isLoading }) => {
       </div>
 
       {/* Ingredients */}
-      <div className="space-y-4">
+      <div className="space-y-4 mb-6">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-text">Ingredients</h3>
           <Button
@@ -358,7 +376,7 @@ const CreateRecipeForm = ({ onSubmit, onCancel, isLoading }) => {
       </div>
 
       {/* Instructions */}
-      <div className="space-y-4">
+      <div className="space-y-4 mb-6">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-text">Instructions</h3>
           <Button

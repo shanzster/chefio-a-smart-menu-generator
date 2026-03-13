@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FiSearch, FiX, FiLoader } from 'react-icons/fi';
 import { Salad, ChevronRight } from 'lucide-react';
 import Card from '../../../components/common/Card/Card';
@@ -8,6 +8,7 @@ import Layout from '../../../components/layout/Layout/Layout';
 import NutritionCard from '../../../components/nutrition/NutritionCard';
 import NutritionDetails from '../../../components/nutrition/NutritionDetails';
 import { searchFoods } from '../../../services/nutrition/usdaService';
+import { getFoodImage } from '../../../services/nutrition/foodImageService';
 import { toast } from '../../../store/toastStore';
 
 const Nutrition = () => {
@@ -16,6 +17,30 @@ const Nutrition = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedFood, setSelectedFood] = useState(null);
   const [quantity, setQuantity] = useState(100);
+  const [foodImage, setFoodImage] = useState(null);
+  const [isLoadingImage, setIsLoadingImage] = useState(false);
+
+  // Fetch food image when a food is selected
+  useEffect(() => {
+    const loadFoodImage = async () => {
+      if (selectedFood) {
+        setIsLoadingImage(true);
+        try {
+          const imageUrl = await getFoodImage(selectedFood.name);
+          setFoodImage(imageUrl);
+        } catch (error) {
+          console.error('Failed to load food image:', error);
+          setFoodImage(null);
+        } finally {
+          setIsLoadingImage(false);
+        }
+      } else {
+        setFoodImage(null);
+      }
+    };
+
+    loadFoodImage();
+  }, [selectedFood]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -55,11 +80,13 @@ const Nutrition = () => {
   const handleSelectFood = (food) => {
     setSelectedFood(food);
     setQuantity(100);
+    setFoodImage(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleBack = () => {
     setSelectedFood(null);
+    setFoodImage(null);
   };
 
   const quickSearches = [
@@ -134,8 +161,23 @@ const Nutrition = () => {
               </div>
             </Card>
 
+            {/* Food Image (if available) */}
+            {foodImage && (
+              <Card variant="glass" className="overflow-hidden">
+                <img 
+                  src={foodImage} 
+                  alt={selectedFood.name}
+                  className="w-full h-48 object-cover rounded-lg"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    setFoodImage(null);
+                  }}
+                />
+              </Card>
+            )}
+
             {/* Detailed Nutrition */}
-            <NutritionDetails food={selectedFood} quantity={quantity} />
+            <NutritionDetails food={selectedFood} quantity={quantity} imageUrl={foodImage} />
           </div>
         ) : (
           <>

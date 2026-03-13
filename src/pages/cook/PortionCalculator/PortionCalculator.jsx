@@ -6,7 +6,7 @@ import Card from '../../../components/common/Card/Card';
 import Badge from '../../../components/common/Badge/Badge';
 import Button from '../../../components/common/Button/Button';
 import { useAuthStore } from '../../../store/authStore';
-import { getUserSavedRecipes } from '../../../services/firebase/recipeService';
+import { getUserRecipes, getUserSavedRecipes } from '../../../services/firebase/recipeService';
 import { toast } from '../../../store/toastStore';
 
 const PortionCalculator = () => {
@@ -26,10 +26,17 @@ const PortionCalculator = () => {
       }
 
       try {
-        const savedRecipes = await getUserSavedRecipes(user.uid);
+        // Fetch both user-created recipes and saved recipes
+        const [userRecipes, savedRecipes] = await Promise.all([
+          getUserRecipes(),
+          getUserSavedRecipes()
+        ]);
         
-        // Transform saved recipes to calculator format
-        const formattedRecipes = savedRecipes.map(recipe => ({
+        // Merge both arrays
+        const allRecipes = [...userRecipes, ...savedRecipes];
+        
+        // Transform recipes to calculator format
+        const formattedRecipes = allRecipes.map(recipe => ({
           id: recipe.id,
           name: recipe.name,
           originalServings: recipe.servings || 4,
@@ -421,7 +428,7 @@ const PortionCalculator = () => {
           </div>
 
           {/* Calculator */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 space-y-6">
             {!selectedRecipe ? (
               <Card variant="glass" className="border border-white/50">
                 <div className="p-12 text-center">
@@ -431,7 +438,7 @@ const PortionCalculator = () => {
                 </div>
               </Card>
             ) : (
-              <div className="space-y-6">
+              <>
                 {/* Servings Input */}
                 <Card variant="glass" className="border border-white/50">
                   <div className="p-6">
@@ -583,7 +590,7 @@ const PortionCalculator = () => {
                 </Card>
 
                 {/* Action Buttons */}
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <Button 
                     variant="outline" 
                     fullWidth
@@ -598,7 +605,7 @@ const PortionCalculator = () => {
                     Generate Shopping List
                   </Button>
                 </div>
-              </div>
+              </>
             )}
           </div>
         </div>

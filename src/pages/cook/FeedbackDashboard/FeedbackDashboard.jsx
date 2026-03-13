@@ -12,6 +12,8 @@ const FeedbackDashboard = () => {
   const [searchParams] = useSearchParams();
   const user = useAuthStore((state) => state.user);
   const [qrCodes, setQrCodes] = useState([]);
+  const [groupedRecipes, setGroupedRecipes] = useState([]);
+  const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [selectedQR, setSelectedQR] = useState(null);
   const [feedback, setFeedback] = useState([]);
   const [filteredFeedback, setFilteredFeedback] = useState([]);
@@ -19,6 +21,7 @@ const FeedbackDashboard = () => {
   const [loadingFeedback, setLoadingFeedback] = useState(false);
   const [dateFilter, setDateFilter] = useState('all');
   const [ratingFilter, setRatingFilter] = useState('all');
+  const [viewMode, setViewMode] = useState('recipes'); // 'recipes' or 'qrcodes'
 
   useEffect(() => {
     const loadQRCodes = async () => {
@@ -28,14 +31,37 @@ const FeedbackDashboard = () => {
         const codes = await getCookQRCodes(user.uid);
         setQrCodes(codes);
         
+        // Group QR codes by recipe name
+        const grouped = codes.reduce((acc, qr) => {
+          const recipeName = qr.recipeName || 'Untitled Recipe';
+          if (!acc[recipeName]) {
+            acc[recipeName] = {
+              recipeName,
+              recipeImage: qr.recipeImage,
+              qrCodes: [],
+              totalFeedback: 0,
+              totalScans: 0
+            };
+          }
+          acc[recipeName].qrCodes.push(qr);
+          acc[recipeName].totalFeedback += qr.feedbackCount || 0;
+          acc[recipeName].totalScans += qr.scans || 0;
+          return acc;
+        }, {});
+        
+        setGroupedRecipes(Object.values(grouped));
+        
         // Check if there's a recipe ID in URL params
         const recipeId = searchParams.get('recipe');
-        const targetQR = recipeId ? codes.find(c => c.id === recipeId) : codes[0];
-        
-        // Auto-select QR code
-        if (targetQR) {
-          setSelectedQR(targetQR);
-          loadFeedback(targetQR.id);
+        if (recipeId) {
+          const targetQR = codes.find(c => c.id === recipeId);
+          if (targetQR) {
+            const recipeGroup = grouped[targetQR.recipeName];
+            setSelectedRecipe(recipeGroup);
+            setViewMode('qrcodes');
+            setSelectedQR(targetQR);
+            loadFeedback(targetQR.id);
+          }
         }
       } catch (error) {
         console.error('Error loading QR codes:', error);
@@ -89,6 +115,22 @@ const FeedbackDashboard = () => {
 
     setFilteredFeedback(filtered);
   }, [feedback, dateFilter, ratingFilter]);
+
+  const handleSelectRecipe = (recipe) => {
+    setSelectedRecipe(recipe);
+    setViewMode('qrcodes');
+    setSelectedQR(null);
+    setFeedback([]);
+    setFilteredFeedback([]);
+  };
+
+  const handleBackToRecipes = () => {
+    setViewMode('recipes');
+    setSelectedRecipe(null);
+    setSelectedQR(null);
+    setFeedback([]);
+    setFilteredFeedback([]);
+  };
 
   const handleSelectQR = (qr) => {
     setSelectedQR(qr);
@@ -169,49 +211,117 @@ const FeedbackDashboard = () => {
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Sidebar - QR Codes List */}
+          {/* Left Sidebar - Recipe Groups or QR Codes List */}
           <div className="lg:col-span-1">
             <Card variant="glass" className="p-4">
-              <h2 className="text-lg font-semibold text-text mb-4">Your Dishes</h2>
-              <div className="space-y-2">
-                {qrCodes.map((qr) => (
-                  <button
-                    key={qr.id}
-                    onClick={() => handleSelectQR(qr)}
-                    className={`w-full text-left p-4 rounded-lg transition-all ${
-                      selectedQR?.id === qr.id
-                        ? 'bg-primary/10 border-2 border-primary'
-                        : 'bg-white border-2 border-gray-200 hover:border-primary'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      {qr.recipeImage && (
-                        <img
-                          src={qr.recipeImage}
-                          alt={qr.recipeName}
-                          className="w-12 h-12 rounded-lg object-cover"
-                        />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-text truncate">{qr.recipeName}</h3>
-                        <div className="flex items-center gap-3 text-xs text-text-tertiary mt-1">
-                          <span className="flex items-center gap-1">
-                            <FiStar className="w-3 h-3" />
-                            {qr.feedbackCount || 0} reviews
-                          </span>
-                          <span>{qr.scans || 0} scans</span>
+              {viewMode === 'recipes' ? (
+                <>
+                  <h2 className="text-lg font-semibold text-text mb-4">Your Dishes</h2>
+                  <div className="space-y-2">
+                    {groupedRecipes.map((recipe, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleSelectRecipe(recipe)}
+                        className="w-full text-left p-4 rounded-lg transition-all bg-white border-2 border-gray-200 hover:border-primary hover:shadow-md"
+                      >
+                        <div className="flex items-start gap-3">
+                          {recipe.recipeImage && (
+                            <img
+                              src={recipe.recipeImage}
+                              alt={recipe.recipeName}
+                              className="w-12 h-12 rounded-lg object-cover"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-text truncate">{recipe.recipeName}</h3>
+                            <div className="flex items-center gap-3 text-xs text-text-tertiary mt-1">
+                              <span className="flex items-center gap-1">
+                                <FiStar className="w-3 h-3" />
+                                {recipe.totalFeedback} reviews
+                              </span>
+                              <span>{recipe.qrCodes.length} QR codes</span>
+                            </div>
+                            <div className="text-xs text-text-tertiary mt-1">
+                              {recipe.totalScans} total scans
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 mb-4">
+                    <button
+                      onClick={handleBackToRecipes}
+                      className="text-primary hover:text-primary-dark transition-colors"
+                    >
+                      ← Back
+                    </button>
+                  </div>
+                  <h2 className="text-lg font-semibold text-text mb-2">{selectedRecipe?.recipeName}</h2>
+                  <p className="text-sm text-text-secondary mb-4">Select a QR code to view feedback</p>
+                  <div className="space-y-2">
+                    {selectedRecipe?.qrCodes.map((qr, index) => (
+                      <button
+                        key={qr.id}
+                        onClick={() => handleSelectQR(qr)}
+                        className={`w-full text-left p-4 rounded-lg transition-all ${
+                          selectedQR?.id === qr.id
+                            ? 'bg-primary/10 border-2 border-primary'
+                            : 'bg-white border-2 border-gray-200 hover:border-primary'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          {qr.recipeImage && (
+                            <img
+                              src={qr.recipeImage}
+                              alt={qr.recipeName}
+                              className="w-12 h-12 rounded-lg object-cover"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-text">QR Code #{index + 1}</h3>
+                            <div className="flex items-center gap-3 text-xs text-text-tertiary mt-1">
+                              <span className="flex items-center gap-1">
+                                <FiStar className="w-3 h-3" />
+                                {qr.feedbackCount || 0} reviews
+                              </span>
+                              <span>{qr.scans || 0} scans</span>
+                            </div>
+                            <div className="text-xs text-text-tertiary mt-1">
+                              Created {formatDate(qr.createdAt)}
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </Card>
           </div>
 
           {/* Right Content - Feedback Details */}
           <div className="lg:col-span-2 space-y-6">
-            {selectedQR && (
+            {!selectedQR && viewMode === 'recipes' ? (
+              <Card variant="glass" className="p-12 text-center">
+                <MessageSquare className="w-16 h-16 text-text-tertiary mx-auto mb-4 opacity-50" />
+                <h2 className="text-xl font-bold text-text mb-2">Select a Dish</h2>
+                <p className="text-text-secondary">
+                  Choose a dish from the list to view its QR codes and feedback
+                </p>
+              </Card>
+            ) : !selectedQR && viewMode === 'qrcodes' ? (
+              <Card variant="glass" className="p-12 text-center">
+                <MessageSquare className="w-16 h-16 text-text-tertiary mx-auto mb-4 opacity-50" />
+                <h2 className="text-xl font-bold text-text mb-2">Select a QR Code</h2>
+                <p className="text-text-secondary">
+                  Choose a QR code to view its feedback
+                </p>
+              </Card>
+            ) : selectedQR && (
               <>
                 {/* Filters */}
                 <Card variant="glass" className="p-4">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiSearch, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiBookmark, FiClock, FiUsers } from 'react-icons/fi';
+import { FiSearch, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiBookmark, FiClock, FiUsers, FiExternalLink } from 'react-icons/fi';
 import { ChefHat, Sparkles } from 'lucide-react';
 import Layout from '../../../components/layout/Layout/Layout';
 import Card from '../../../components/common/Card/Card';
@@ -99,8 +99,10 @@ const RecipeFinder = () => {
   };
 
   const checkIngredientAvailability = (ingredient) => {
+    // Handle both string and object ingredient formats
+    const ingredientName = typeof ingredient === 'string' ? ingredient : ingredient.name;
     return userIngredients.some(userIng => 
-      userIng.toLowerCase().trim() === ingredient.toLowerCase().trim()
+      userIng.toLowerCase().trim() === ingredientName.toLowerCase().trim()
     );
   };
 
@@ -373,6 +375,9 @@ const RecipeFinder = () => {
                   <div className="space-y-2">
                     {selectedRecipe.ingredients.map((ingredient, index) => {
                       const hasIngredient = checkIngredientAvailability(ingredient);
+                      const ingredientDisplay = typeof ingredient === 'string' 
+                        ? ingredient 
+                        : `${ingredient.amount} ${ingredient.name}`.trim();
                       return (
                         <div
                           key={index}
@@ -386,7 +391,7 @@ const RecipeFinder = () => {
                             <FiX className="w-5 h-5 text-error flex-shrink-0" />
                           )}
                           <span className={`text-sm font-medium ${hasIngredient ? 'text-success' : 'text-error'}`}>
-                            {ingredient}
+                            {ingredientDisplay}
                           </span>
                         </div>
                       );

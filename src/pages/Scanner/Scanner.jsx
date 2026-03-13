@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiCamera, FiX, FiCheck, FiArrowLeft, FiPlus, FiArrowRight } from 'react-icons/fi';
+import { FiCamera, FiX, FiCheck, FiArrowLeft, FiPlus, FiArrowRight, FiRefreshCw } from 'react-icons/fi';
 import { ArrowLeft, ChefHat, Camera, Drumstick, Apple, Carrot, Wheat, Milk, Egg } from 'lucide-react';
 import Button from '../../components/common/Button/Button';
 import Card from '../../components/common/Card/Card';
@@ -44,20 +44,20 @@ const ingredientDatabase = {
 
 const Scanner = () => {
   const navigate = useNavigate();
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const user = useAuthStore((state) => state.user);
   const [isScanning, setIsScanning] = useState(false);
   const [scannedIngredients, setScannedIngredients] = useState([]);
   const [currentScan, setCurrentScan] = useState(null);
   const [alternatives, setAlternatives] = useState([]);
   const [manualInput, setManualInput] = useState('');
   const [isIdentifying, setIsIdentifying] = useState(false);
+  const [facingMode, setFacingMode] = useState('environment'); // 'environment' for back camera, 'user' for front
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
   useEffect(() => {
     // Preload TensorFlow models on component mount
     console.log('🚀 [SCANNER] Preloading TensorFlow.js models...');
-    toast.info('Scanner is now ready 💡');
 
     // Preload TensorFlow models
     preloadModels().then(() => {
@@ -71,11 +71,11 @@ const Scanner = () => {
     };
   }, []);
 
-  const startScanning = async () => {
+  const startScanning = async (mode = facingMode) => {
     setIsScanning(true); // Set state first to render video element
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+        video: { facingMode: mode }
       });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -85,6 +85,34 @@ const Scanner = () => {
       setIsScanning(false); // Reset state on error
       // Fallback to manual input
       alert('Camera access denied. Please use manual input below.');
+    }
+  };
+
+  const switchCamera = async () => {
+    // Stop current stream
+    if (videoRef.current?.srcObject) {
+      videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+    }
+    
+    // Toggle facing mode
+    const newFacingMode = facingMode === 'environment' ? 'user' : 'environment';
+    setFacingMode(newFacingMode);
+    
+    // Start with new facing mode
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: newFacingMode }
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      toast.success(`Switched to ${newFacingMode === 'user' ? 'front' : 'back'} camera`);
+    } catch (error) {
+      console.error('Error switching camera:', error);
+      toast.error('Failed to switch camera');
+      // Revert to previous mode
+      setFacingMode(facingMode);
+      startScanning(facingMode);
     }
   };
 
@@ -212,7 +240,7 @@ const Scanner = () => {
 
   return (
     <>
-      {isAuthenticated ? (
+      {user ? (
         // Authenticated users see the scanner within the Layout (with sidebar)
         <Layout>
           <ScannerContent
@@ -222,10 +250,12 @@ const Scanner = () => {
             alternatives={alternatives}
             manualInput={manualInput}
             isIdentifying={isIdentifying}
+            facingMode={facingMode}
             videoRef={videoRef}
             canvasRef={canvasRef}
             startScanning={startScanning}
             stopScanning={stopScanning}
+            switchCamera={switchCamera}
             captureAndIdentify={captureAndIdentify}
             confirmIngredient={confirmIngredient}
             removeIngredient={removeIngredient}
@@ -248,10 +278,12 @@ const Scanner = () => {
               alternatives={alternatives}
               manualInput={manualInput}
               isIdentifying={isIdentifying}
+              facingMode={facingMode}
               videoRef={videoRef}
               canvasRef={canvasRef}
               startScanning={startScanning}
               stopScanning={stopScanning}
+              switchCamera={switchCamera}
               captureAndIdentify={captureAndIdentify}
               confirmIngredient={confirmIngredient}
               removeIngredient={removeIngredient}
@@ -276,10 +308,12 @@ const ScannerContent = ({
   alternatives,
   manualInput,
   isIdentifying,
+  facingMode,
   videoRef,
   canvasRef,
   startScanning,
   stopScanning,
+  switchCamera,
   captureAndIdentify,
   confirmIngredient,
   removeIngredient,
@@ -344,6 +378,16 @@ const ScannerContent = ({
                     <Camera className="w-4 h-4 inline mr-2" />
                     Position ingredient in frame
                   </div>
+
+                  {/* Camera switch button */}
+                  <button
+                    onClick={switchCamera}
+                    disabled={isIdentifying}
+                    className="absolute top-4 right-4 w-12 h-12 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/80 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={`Switch to ${facingMode === 'user' ? 'back' : 'front'} camera`}
+                  >
+                    <FiRefreshCw className="text-xl" />
+                  </button>
                 </div>
 
                 {/* Controls */}

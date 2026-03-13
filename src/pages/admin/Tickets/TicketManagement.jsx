@@ -5,7 +5,9 @@ import {
   FiSend,
   FiClock,
   FiCheckCircle,
-  FiAlertCircle
+  FiAlertCircle,
+  FiTrash2,
+  FiPlus
 } from 'react-icons/fi';
 import { ArrowLeft } from 'lucide-react';
 import Card from '../../../components/common/Card/Card';

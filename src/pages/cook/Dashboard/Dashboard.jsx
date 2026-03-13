@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FiClock, FiUsers, FiZap, FiArrowRight, FiPlusCircle, FiBook, FiActivity, FiSearch, FiRefreshCw, FiExternalLink, FiBookmark } from 'react-icons/fi';
+import { FiClock, FiUsers, FiZap, FiArrowRight, FiPlusCircle, FiBook, FiActivity, FiRefreshCw, FiExternalLink, FiBookmark } from 'react-icons/fi';
 import { Hand, Lightbulb, Circle, Star } from 'lucide-react';
 import Card from '../../../components/common/Card/Card';
 import Badge from '../../../components/common/Badge/Badge';
@@ -22,6 +22,29 @@ const quickActions = [
 
 const categories = ['All', 'Breakfast', 'Lunch', 'Dinner', 'Snacks', 'Desserts'];
 
+const chefTips = [
+  "Salt your pasta water until it tastes like the sea - about 1 tablespoon per liter! This is the only chance to season the pasta itself, making a huge difference in the final dish.",
+  "Let meat rest for 5-10 minutes after cooking. This allows the juices to redistribute throughout the meat, making it more tender and flavorful.",
+  "Always preheat your pan before adding oil. A hot pan with cold oil prevents food from sticking and ensures better browning.",
+  "Add a pinch of salt to your coffee grounds before brewing. It reduces bitterness and enhances the natural flavors of the coffee.",
+  "Store fresh herbs like flowers in a glass of water in the fridge. Cover with a plastic bag to keep them fresh for up to two weeks.",
+  "Use room temperature eggs for baking. They mix more easily and create better texture in cakes and pastries.",
+  "Sharpen your knives regularly. A sharp knife is safer and more efficient than a dull one, giving you better control while cutting.",
+  "Add a splash of vinegar or lemon juice to boiling water when poaching eggs. It helps the egg whites coagulate faster for perfect poached eggs.",
+  "Toast your spices in a dry pan before using them. This releases their essential oils and intensifies their flavors dramatically.",
+  "Don't overcrowd your pan when searing meat. Give each piece space to ensure proper browning instead of steaming.",
+  "Save your pasta water! The starchy water is perfect for adjusting sauce consistency and helps it cling to the pasta better.",
+  "Let your batter rest for 30 minutes before making pancakes or waffles. This allows the flour to hydrate fully, resulting in fluffier texture.",
+  "Add a teaspoon of sugar to tomato-based sauces to balance acidity. It rounds out the flavors without making the sauce taste sweet.",
+  "Freeze leftover wine in ice cube trays. Use these cubes for cooking sauces, stews, or deglazing pans later.",
+  "Pat meat dry with paper towels before seasoning and cooking. Moisture prevents proper browning and creates steam instead of a crust.",
+  "Use the claw grip when cutting vegetables. Curl your fingers inward to protect them while your knuckles guide the knife safely.",
+  "Add fresh herbs at the end of cooking for maximum flavor. Heat diminishes their taste, so save them for the final minutes.",
+  "Taste your food as you cook! Adjust seasoning gradually throughout the cooking process rather than all at once at the end.",
+  "Store tomatoes at room temperature, not in the fridge. Cold temperatures break down their texture and diminish their flavor.",
+  "Use a meat thermometer for perfect doneness every time. It takes the guesswork out of cooking and prevents over or undercooking."
+];
+
 const Dashboard = () => {
   const user = useAuthStore((state) => state.user);
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -29,6 +52,7 @@ const Dashboard = () => {
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(false);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [dailyTip, setDailyTip] = useState('');
   const [stats, setStats] = useState({
     totalRecipes: 0,
     qrCodesShared: 0,
@@ -78,6 +102,16 @@ const Dashboard = () => {
     return 'Good Evening';
   };
 
+  const getRandomTip = () => {
+    const randomIndex = Math.floor(Math.random() * chefTips.length);
+    return chefTips[randomIndex];
+  };
+
+  // Set random tip on component mount
+  useEffect(() => {
+    setDailyTip(getRandomTip());
+  }, []);
+
   const loadUserStats = async () => {
     if (!user) return;
 
@@ -85,11 +119,23 @@ const Dashboard = () => {
       // Get created recipes (from recipes collection)
       const createdRecipes = await getUserRecipes(user.uid);
       
-      // Get saved recipes (from user document)
-      const savedRecipes = await getUserSavedRecipes();
+      // Get saved recipes (from user document) - with error handling
+      let savedRecipes = [];
+      try {
+        savedRecipes = await getUserSavedRecipes();
+      } catch (error) {
+        console.warn('Could not load saved recipes:', error);
+        // Continue without saved recipes if there's a permission error
+      }
       
-      // Get all QR codes
-      const qrCodes = await getCookQRCodes(user.uid);
+      // Get all QR codes - with error handling
+      let qrCodes = [];
+      try {
+        qrCodes = await getCookQRCodes(user.uid);
+      } catch (error) {
+        console.warn('Could not load QR codes:', error);
+        // Continue without QR codes if there's a permission error
+      }
       
       // Calculate recipes created this week
       const oneWeekAgo = new Date();
@@ -106,11 +152,17 @@ const Dashboard = () => {
 
       setStats({
         totalRecipes: totalRecipes,
-        totalQRCodes: qrCodes.length,
-        thisWeekRecipes: thisWeekRecipes.length
+        qrCodesShared: qrCodes.length,
+        recipesThisWeek: thisWeekRecipes.length
       });
     } catch (error) {
       console.error('Error loading user stats:', error);
+      // Set default stats if there's an error
+      setStats({
+        totalRecipes: 0,
+        qrCodesShared: 0,
+        recipesThisWeek: 0
+      });
     }
   };
 
@@ -123,8 +175,8 @@ const Dashboard = () => {
 
     setIsLoadingRecipes(true);
     try {
-      // Fetch 10 recipes for "All", 6 for specific categories
-      const recipeCount = category === 'All' ? 10 : 6;
+      // Limit to 3 recipes to conserve API quota
+      const recipeCount = 3;
       const recipes = await getMealsByCategory(category, recipeCount);
       setFeaturedRecipes(recipes);
       
@@ -250,33 +302,19 @@ const Dashboard = () => {
 
               {/* Quick Stats */}
               <div className="grid grid-cols-3 gap-4 lg:gap-6">
-                <div className="text-center">
+                <Link to="/cook/recipes" className="text-center hover:scale-105 transition-transform cursor-pointer no-underline">
                   <div className="text-2xl lg:text-3xl font-bold text-primary mb-1">{stats.totalRecipes}</div>
                   <div className="text-xs text-text-secondary">Recipes</div>
-                </div>
-                <div className="text-center">
+                </Link>
+                <Link to="/cook/feedback-dashboard" className="text-center hover:scale-105 transition-transform cursor-pointer no-underline">
                   <div className="text-2xl lg:text-3xl font-bold text-secondary mb-1">{stats.qrCodesShared}</div>
                   <div className="text-xs text-text-secondary">Shared</div>
-                </div>
-                <div className="text-center">
+                </Link>
+                <Link to="/cook/recipes" className="text-center hover:scale-105 transition-transform cursor-pointer no-underline">
                   <div className="text-2xl lg:text-3xl font-bold text-success mb-1">{stats.recipesThisWeek}</div>
                   <div className="text-xs text-text-secondary">This Week</div>
-                </div>
+                </Link>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Search */}
-        <div className="mb-8 lg:mb-12">
-          <div className="glass-enhanced rounded-2xl px-6 lg:px-8 py-4 lg:py-5 focus-within:bg-white/90 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10 focus-within:scale-[1.01] transition-all duration-300 hover:shadow-xl border border-white/50">
-            <div className="flex items-center gap-3 lg:gap-4">
-              <FiSearch className="w-5 h-5 lg:w-6 lg:h-6 text-text-tertiary transition-transform hover:scale-110" />
-              <input 
-                type="text" 
-                placeholder="Search recipes, ingredients, or nutrition info..." 
-                className="flex-1 bg-transparent border-none outline-none text-base lg:text-lg text-text placeholder:text-text-tertiary"
-              />
             </div>
           </div>
         </div>
@@ -418,7 +456,7 @@ const Dashboard = () => {
                   <Star className="w-5 h-5 text-amber-600 fill-amber-600" />
                 </h3>
                 <p className="text-sm lg:text-base text-text-secondary leading-relaxed">
-                  Salt your pasta water until it tastes like the sea - about 1 tablespoon per liter! This is the only chance to season the pasta itself, making a huge difference in the final dish.
+                  {dailyTip}
                 </p>
               </div>
             </div>

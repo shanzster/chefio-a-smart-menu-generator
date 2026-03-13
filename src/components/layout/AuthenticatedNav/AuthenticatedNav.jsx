@@ -55,31 +55,31 @@ const AuthenticatedNav = () => {
 
   return (
     <>
-      {/* Desktop Sidebar - Pill Navigation */}
+      {/* Desktop Sidebar - Pill Navigation with Scrollable Content */}
       <aside className="hidden lg:flex fixed left-6 top-6 bottom-6 z-50">
-        <div className="flex flex-col gap-4 p-4 bg-white/80 backdrop-blur-xl border border-gray-200/50 rounded-3xl shadow-2xl">
+        <div className="flex flex-col gap-3 p-3 bg-white/80 backdrop-blur-xl border border-gray-200/50 rounded-3xl shadow-2xl max-h-full">
           {/* Logo */}
           <Link 
             to="/cook/dashboard" 
-            className="flex items-center justify-center w-14 h-14 rounded-2xl hover:scale-110 transition-transform duration-300"
+            className="flex items-center justify-center w-12 h-12 rounded-2xl hover:scale-110 transition-transform duration-300 flex-shrink-0"
           >
             <img 
               src="/sidebar_logo.png" 
               alt="Chefio" 
-              className="w-14 h-14 object-contain"
+              className="w-12 h-12 object-contain"
             />
           </Link>
 
           {/* Divider */}
-          <div className="w-full h-px bg-gray-200" />
+          <div className="w-full h-px bg-gray-200 flex-shrink-0" />
 
-          {/* Navigation Items */}
-          <nav className="flex flex-col gap-2">
+          {/* Navigation Items - Scrollable */}
+          <nav className="flex flex-col gap-1.5 overflow-y-auto overflow-x-hidden flex-1 pr-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400">
             {navItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`group relative flex items-center justify-center w-14 h-14 rounded-2xl transition-all duration-300 ${
+                className={`group relative flex items-center justify-center w-12 h-12 rounded-2xl transition-all duration-300 flex-shrink-0 ${
                   isActive(item.path)
                     ? 'bg-gradient-to-r from-primary to-primary-dark text-white shadow-lg shadow-primary/30'
                     : 'text-text-secondary hover:bg-primary/10 hover:text-primary'
@@ -96,17 +96,14 @@ const AuthenticatedNav = () => {
             ))}
           </nav>
 
-          {/* Spacer */}
-          <div className="flex-1" />
-
           {/* Divider */}
-          <div className="w-full h-px bg-gray-200" />
+          <div className="w-full h-px bg-gray-200 flex-shrink-0" />
 
           {/* Profile & Settings */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5 flex-shrink-0">
             <Link
               to="/cook/profile"
-              className="group relative flex items-center justify-center w-14 h-14 rounded-2xl text-text-secondary hover:bg-primary/10 hover:text-primary transition-all duration-300"
+              className="group relative flex items-center justify-center w-12 h-12 rounded-2xl text-text-secondary hover:bg-primary/10 hover:text-primary transition-all duration-300"
               title="Profile"
             >
               <FiUser className="w-5 h-5 flex-shrink-0" />
@@ -117,22 +114,9 @@ const AuthenticatedNav = () => {
               </span>
             </Link>
 
-            <Link
-              to="/cook/settings"
-              className="group relative flex items-center justify-center w-14 h-14 rounded-2xl text-text-secondary hover:bg-primary/10 hover:text-primary transition-all duration-300"
-              title="Settings"
-            >
-              <FiSettings className="w-5 h-5 flex-shrink-0" />
-              {/* Tooltip */}
-              <span className="absolute left-full ml-4 px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-50 shadow-lg">
-                Settings
-                <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900"></span>
-              </span>
-            </Link>
-
             <button
               onClick={handleLogout}
-              className="group relative flex items-center justify-center w-14 h-14 rounded-2xl text-text-secondary hover:bg-error/10 hover:text-error transition-all duration-300"
+              className="group relative flex items-center justify-center w-12 h-12 rounded-2xl text-text-secondary hover:bg-error/10 hover:text-error transition-all duration-300"
               title="Logout"
             >
               <FiLogOut className="w-5 h-5 flex-shrink-0" />
@@ -145,7 +129,7 @@ const AuthenticatedNav = () => {
           </div>
 
           {/* User Avatar */}
-          <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 text-primary font-bold text-lg">
+          <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 text-primary font-bold text-base flex-shrink-0">
             {user?.name?.charAt(0) || 'U'}
           </div>
         </div>

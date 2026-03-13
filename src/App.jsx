@@ -4,7 +4,7 @@ import useAuthStore from './store/authStore';
 
 // Components
 import ProtectedRoute from './components/common/ProtectedRoute/ProtectedRoute';
-// import AdminRoute from './components/common/ProtectedRoute/AdminRoute'; // Temporarily disabled
+import AdminRoute from './components/common/ProtectedRoute/AdminRoute';
 import ToastContainer from './components/common/Toast/ToastContainer';
 
 // Public Pages
@@ -23,6 +23,7 @@ import Recipes from './pages/cook/Recipes/Recipes';
 import BrowseRecipes from './pages/cook/BrowseRecipes/BrowseRecipes';
 import Nutrition from './pages/cook/Nutrition/Nutrition';
 import QRGenerator from './pages/cook/QRGenerator/QRGenerator';
+import ScanQR from './pages/cook/ScanQR/ScanQR';
 import RecipeFinder from './pages/cook/RecipeFinder/RecipeFinder';
 import PortionCalculator from './pages/cook/PortionCalculator/PortionCalculator';
 import CookFeedback from './pages/cook/Feedback/Feedback';
@@ -34,23 +35,57 @@ import Profile from './pages/cook/Profile/Profile';
 import RecipeView from './pages/guest/RecipeView/RecipeView';
 import GuestFeedback from './pages/guest/Feedback/Feedback';
 
-// Admin Pages - Temporarily disabled for deployment
-// import AdminLogin from './pages/admin/Login/AdminLogin.jsx';
-// import AdminDashboard from './pages/admin/Dashboard/AdminDashboard.jsx';
-// import UserManagement from './pages/admin/Users/UserManagement.jsx';
-// import TicketManagement from './pages/admin/Tickets/TicketManagement.jsx';
-// import ContentModeration from './pages/admin/Moderation/ContentModeration.jsx';
-// import ActivityLogs from './pages/admin/Logs/ActivityLogs.jsx';
+// Admin Pages
+import AdminLogin from './pages/admin/Login/AdminLogin.jsx';
+import AdminDashboard from './pages/admin/Dashboard/AdminDashboard.jsx';
+import UserManagement from './pages/admin/Users/UserManagement.jsx';
+import TicketManagement from './pages/admin/Tickets/TicketManagement.jsx';
+import ContentModeration from './pages/admin/Moderation/ContentModeration.jsx';
+import ActivityLogs from './pages/admin/Logs/ActivityLogs.jsx';
+import RecipeManagement from './pages/admin/Recipes/RecipeManagement.jsx';
+import FeedbackManagement from './pages/admin/Feedback/FeedbackManagement.jsx';
+import APIConfig from './pages/admin/APIConfig/APIConfig.jsx';
 
 import './App.css';
 
 function App() {
   const initialize = useAuthStore((state) => state.initialize);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const user = useAuthStore((state) => state.user);
+  const [isInitializing, setIsInitializing] = React.useState(true);
 
   useEffect(() => {
-    initialize();
+    console.log('🚀 [APP] Initializing app...');
+    const unsubscribe = initialize();
+    
+    // Wait a brief moment for the auth state to be determined
+    const timer = setTimeout(() => {
+      console.log('✅ [APP] Initialization complete');
+      console.log('📊 [APP] isAuthenticated:', isAuthenticated);
+      console.log('👤 [APP] user:', user ? user.email : 'null');
+      setIsInitializing(false);
+    }, 300);
+    
+    return () => {
+      if (unsubscribe) unsubscribe();
+      clearTimeout(timer);
+    };
   }, [initialize]);
+
+  // Show loading screen while checking authentication state
+  if (isInitializing) {
+    console.log('⏳ [APP] Still initializing...');
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-text-secondary">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('🎯 [APP] Rendering routes with isAuthenticated:', isAuthenticated);
 
   return (
     <BrowserRouter>
@@ -59,9 +94,25 @@ function App() {
         {/* Public Routes */}
         <Route path="/" element={<Landing />} />
         <Route path="/feedback/:dishId" element={<Feedback />} />
-        <Route path="/login" element={isAuthenticated ? <Navigate to="/cook/dashboard" /> : <Login />} />
-        <Route path="/register" element={isAuthenticated ? <Navigate to="/cook/dashboard" /> : <Register />} />
-        <Route path="/forgot-password" element={isAuthenticated ? <Navigate to="/cook/dashboard" /> : <ForgotPassword />} />
+        <Route 
+          path="/login" 
+          element={
+            (() => {
+              console.log('🔍 [ROUTE] /login - isAuthenticated:', isAuthenticated);
+              return isAuthenticated ? <Navigate to="/cook/dashboard" replace /> : <Login />;
+            })()
+          } 
+        />
+        <Route 
+          path="/register" 
+          element={
+            (() => {
+              console.log('🔍 [ROUTE] /register - isAuthenticated:', isAuthenticated);
+              return isAuthenticated ? <Navigate to="/cook/dashboard" replace /> : <Register />;
+            })()
+          } 
+        />
+        <Route path="/forgot-password" element={isAuthenticated ? <Navigate to="/cook/dashboard" replace /> : <ForgotPassword />} />
         
         {/* Public Features (No Login Required) */}
         <Route path="/menu-generator" element={<PublicMenuGenerator />} />
@@ -123,6 +174,14 @@ function App() {
           }
         />
         <Route
+          path="/cook/scan-qr"
+          element={
+            <ProtectedRoute requiredRole="cook">
+              <ScanQR />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/cook/recipe-finder"
           element={
             <ProtectedRoute requiredRole="cook">
@@ -174,8 +233,8 @@ function App() {
         {/* Redirect /cook to /cook/dashboard */}
         <Route path="/cook" element={<Navigate to="/cook/dashboard" replace />} />
 
-        {/* Admin Routes - Temporarily disabled for deployment */}
-        {/* <Route path="/admin/login" element={<AdminLogin />} />
+        {/* Admin Routes */}
+        <Route path="/admin/login" element={<AdminLogin />} />
         <Route
           path="/admin/dashboard"
           element={
@@ -216,7 +275,31 @@ function App() {
             </AdminRoute>
           }
         />
-        <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} /> */}
+        <Route
+          path="/admin/recipes"
+          element={
+            <AdminRoute>
+              <RecipeManagement />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/feedback"
+          element={
+            <AdminRoute>
+              <FeedbackManagement />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/api-config"
+          element={
+            <AdminRoute>
+              <APIConfig />
+            </AdminRoute>
+          }
+        />
+        <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
 
         {/* Catch all */}
         <Route path="*" element={<Navigate to="/" replace />} />

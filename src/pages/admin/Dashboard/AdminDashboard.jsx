@@ -67,18 +67,11 @@ const AdminDashboard = () => {
       link: '/admin/tickets'
     },
     {
-      title: 'Flagged Content',
-      value: analytics?.flaggedRecipes || 0,
-      icon: <FiAlertCircle />,
-      color: 'bg-red-500',
-      link: '/admin/moderation'
-    },
-    {
       title: 'Total Feedback',
       value: analytics?.totalFeedback || 0,
       icon: <FiTrendingUp />,
       color: 'bg-purple-500',
-      link: '/admin/analytics'
+      link: '/admin/feedback'
     },
     {
       title: 'All Tickets',
@@ -122,8 +115,8 @@ const AdminDashboard = () => {
           {stats.map((stat, index) => (
             <Card 
               key={index} 
-              className="p-6 hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => navigate(stat.link)}
+              className={`p-6 transition-shadow ${stat.link ? 'hover:shadow-lg cursor-pointer' : ''}`}
+              onClick={() => stat.link && navigate(stat.link)}
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -159,19 +152,19 @@ const AdminDashboard = () => {
             </Button>
             <Button
               fullWidth
-              onClick={() => navigate('/admin/moderation')}
-              icon={<FiAlertCircle />}
+              onClick={() => navigate('/admin/feedback')}
+              icon={<FiTrendingUp />}
               variant="outline"
             >
-              Content Moderation
+              View Feedback
             </Button>
             <Button
               fullWidth
-              onClick={() => navigate('/admin/logs')}
+              onClick={() => navigate('/admin/api-config')}
               icon={<FiActivity />}
               variant="outline"
             >
-              Activity Logs
+              API Configuration
             </Button>
           </div>
         </div>

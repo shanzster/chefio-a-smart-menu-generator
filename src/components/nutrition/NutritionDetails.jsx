@@ -1,11 +1,15 @@
-import React from 'react';
-import { Flame, Activity, TrendingUp, Heart, Zap } from 'lucide-react';
+import React, { useState } from 'react';
+import { Flame, Activity, TrendingUp, Heart, Zap, Download } from 'lucide-react';
 import Card from '../common/Card/Card';
 import Badge from '../common/Badge/Badge';
+import Button from '../common/Button/Button';
 import { getDailyValuePercentages } from '../../services/nutrition/usdaService';
+import { exportNutritionToPDF } from '../../utils/pdfExport';
+import { toast } from '../../store/toastStore';
 
-const NutritionDetails = ({ food, quantity = 100 }) => {
+const NutritionDetails = ({ food, quantity = 100, imageUrl = null }) => {
   const { name, nutrition, servingSize } = food;
+  const [isExporting, setIsExporting] = useState(false);
   
   // Calculate nutrition based on quantity
   const multiplier = quantity / servingSize;
@@ -16,14 +20,38 @@ const NutritionDetails = ({ food, quantity = 100 }) => {
 
   const dailyValues = getDailyValuePercentages(adjustedNutrition);
 
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    try {
+      await exportNutritionToPDF(food, quantity, imageUrl);
+      toast.success('PDF exported successfully!');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Failed to export PDF. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-text mb-2">{name}</h2>
-        <p className="text-base text-text-secondary">
-          Nutrition Facts - Per {quantity}g
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-text mb-2">{name}</h2>
+          <p className="text-base text-text-secondary">
+            Nutrition Facts - Per {quantity}g
+          </p>
+        </div>
+        <Button
+          onClick={handleExportPDF}
+          disabled={isExporting}
+          icon={<Download className="w-4 h-4" />}
+          variant="secondary"
+          size="medium"
+        >
+          {isExporting ? 'Exporting...' : 'Export PDF'}
+        </Button>
       </div>
 
       {/* Calories Card */}

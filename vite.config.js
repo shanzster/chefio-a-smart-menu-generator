@@ -8,7 +8,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'robots.txt', 'icons/*.png'],
+      strategies: 'generateSW',
+      filename: 'sw.js',
+      includeAssets: ['favicon.ico', 'robots.txt', 'icons/*.png', 'chefio.png', 'sidebar_logo.png'],
       manifest: {
         name: 'Chefio - Smart Menu Generator',
         short_name: 'Chefio',
@@ -25,46 +27,16 @@ export default defineConfig({
             type: 'image/png',
             purpose: 'any maskable'
           }
-        ]
+        ],
+        categories: ['food', 'lifestyle', 'education']
       },
       workbox: {
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB (for TensorFlow.js bundle)
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp}'],
-        navigateFallback: '/index.html',
-        navigateFallbackAllowlist: [/^(?!\/__).*/],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/api\.spoonacular\.com\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'spoonacular-api-cache',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 // 24 hours
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          },
-          {
-            urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'firebase-storage-cache',
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          }
-        ]
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp}']
       },
       devOptions: {
-        enabled: true
+        enabled: false, // Disable in development to avoid conflicts
+        type: 'module'
       }
     })
   ],
@@ -72,4 +44,43 @@ export default defineConfig({
     port: 5174,
     host: true,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+              return 'vendor-react';
+            }
+            if (id.includes('@tensorflow') || id.includes('tensorflow')) {
+              return 'vendor-tensorflow';
+            }
+            if (id.includes('react-icons') || id.includes('lucide-react')) {
+              return 'vendor-icons';
+            }
+            if (id.includes('firebase')) {
+              return 'vendor-firebase';
+            }
+            if (id.includes('framer-motion') || id.includes('qrcode')) {
+              return 'vendor-ui';
+            }
+            return 'vendor';
+          }
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000,
+    cssCodeSplit: true,
+    sourcemap: false,
+    commonjsOptions: {
+      include: [/node_modules/],
+      transformMixedEsModules: true
+    }
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom'],
+    esbuildOptions: {
+      target: 'es2020'
+    }
+  }
 })

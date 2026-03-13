@@ -5,3 +5,4 @@ export { default as UserManagement } from './Users/UserManagement';
 export { default as TicketManagement } from './Tickets/TicketManagement';
 export { default as ContentModeration } from './Moderation/ContentModeration';
 export { default as ActivityLogs } from './Logs/ActivityLogs';
+export { default as FeedbackManagement } from './Feedback/FeedbackManagement';

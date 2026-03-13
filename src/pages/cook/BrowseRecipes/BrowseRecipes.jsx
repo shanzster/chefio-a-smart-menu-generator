@@ -67,8 +67,8 @@ const BrowseRecipes = () => {
 
     setIsLoadingRecipes(true);
     try {
-      // Fetch more recipes for browsing
-      const recipeCount = category === 'All' ? 12 : 9;
+      // Limit to 3 recipes to conserve API quota
+      const recipeCount = 3;
       const fetchedRecipes = await getMealsByCategory(category, recipeCount);
       setRecipes(fetchedRecipes);
       

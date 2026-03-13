@@ -267,24 +267,44 @@ export const resetPassword = async (email) => {
  */
 export const onAuthChange = (callback) => {
   return onAuthStateChanged(auth, async (user) => {
+    console.log('🔐 [AUTH] onAuthStateChanged fired, user:', user ? user.uid : 'null');
+    
     if (user) {
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        callback({
-          uid: user.uid,
-          email: user.email,
-          displayName: userData.name || user.displayName,
-          name: userData.name,
-          role: userData.role,
-          bio: userData.profile?.bio || '',
-          location: userData.profile?.location || '',
-          phone: userData.profile?.phone || '',
-          createdAt: userData.createdAt,
-          stats: userData.stats,
-          preferences: userData.preferences
-        });
-      } else {
+      try {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          console.log('✅ [AUTH] User document found:', userData.role);
+          
+          callback({
+            uid: user.uid,
+            email: user.email,
+            displayName: userData.name || user.displayName,
+            name: userData.name,
+            role: userData.role,
+            bio: userData.profile?.bio || '',
+            location: userData.profile?.location || '',
+            phone: userData.profile?.phone || '',
+            createdAt: userData.createdAt,
+            stats: userData.stats,
+            preferences: userData.preferences
+          });
+        } else {
+          console.warn('⚠️ [AUTH] User document not found, using defaults');
+          
+          callback({
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName || "User",
+            name: user.displayName || "User",
+            role: "cook"
+          });
+        }
+      } catch (error) {
+        console.error('❌ [AUTH] Error fetching user document:', error);
+        
+        // Still call callback with basic user info even if Firestore fails
         callback({
           uid: user.uid,
           email: user.email,
@@ -294,6 +314,7 @@ export const onAuthChange = (callback) => {
         });
       }
     } else {
+      console.log('🚪 [AUTH] User logged out');
       callback(null);
     }
   });

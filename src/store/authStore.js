@@ -68,25 +68,34 @@ const useAuthStore = create((set, get) => ({
 
   // Set user (used by auth listener)
   setUser: (userData) => {
+    console.log('👤 [STORE] setUser called with:', userData ? userData.email : 'null');
+    console.log('📊 [STORE] Current isAuthenticated:', get().isAuthenticated);
+    
     if (userData) {
       set({ 
         user: userData, 
         role: userData.role || 'cook',
         isAuthenticated: true 
       });
+      console.log('✅ [STORE] User authenticated:', userData.email, 'Role:', userData.role);
     } else {
       set({ 
         user: null, 
         role: null,
         isAuthenticated: false 
       });
+      console.log('🚪 [STORE] User logged out, isAuthenticated set to false');
     }
+    
+    console.log('📊 [STORE] New isAuthenticated:', get().isAuthenticated);
   },
   
   // Initialize auth listener
   initialize: () => {
+    set({ loading: true }); // Set loading while checking auth state
     const unsubscribe = onAuthChange((userData) => {
       get().setUser(userData);
+      set({ loading: false }); // Auth check complete
     });
     return unsubscribe;
   },

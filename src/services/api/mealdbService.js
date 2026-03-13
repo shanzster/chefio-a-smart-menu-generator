@@ -3,7 +3,7 @@ const BASE_URL = 'https://www.themealdb.com/api/json/v1/1';
 /**
  * Get random meals
  */
-export const getRandomMeals = async (count = 10) => {
+export const getRandomMeals = async (count = 3) => {
   try {
     // TheMealDB doesn't support bulk random, so we'll make multiple requests
     const promises = Array.from({ length: count }, () => 
@@ -25,7 +25,7 @@ export const getRandomMeals = async (count = 10) => {
 /**
  * Search meals by category
  */
-export const getMealsByCategory = async (category, limit = 10) => {
+export const getMealsByCategory = async (category, limit = 3) => {
   try {
     const categoryMap = {
       'All': null,

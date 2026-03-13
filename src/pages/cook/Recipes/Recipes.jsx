@@ -8,7 +8,7 @@ import Layout from '../../../components/layout/Layout/Layout';
 import Modal from '../../../components/common/Modal/Modal';
 import CreateRecipeForm from '../../../components/forms/CreateRecipeForm';
 import { useAuthStore } from '../../../store/authStore';
-import { getUserSavedRecipes, removeSavedRecipe, createRecipe } from '../../../services/firebase/recipeService';
+import { getUserRecipes, getUserSavedRecipes, deleteRecipe, removeSavedRecipe, createRecipe } from '../../../services/firebase/recipeService';
 import { toast } from '../../../store/toastStore';
 import { getYouTubeVideoId, getYouTubeEmbedUrl } from '../../../utils/youtubeHelper';
 
@@ -23,13 +23,28 @@ const Recipes = () => {
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [selectedDifficulty, setSelectedDifficulty] = useState(null);
+  const [selectedPrepTime, setSelectedPrepTime] = useState(null);
 
   const fetchRecipes = async () => {
     if (!user) return;
     setIsLoading(true);
     try {
-      const savedRecipes = await getUserSavedRecipes();
-      setRecipes(savedRecipes);
+      // Fetch both types of recipes
+      const [userRecipes, savedRecipes] = await Promise.all([
+        getUserRecipes(),
+        getUserSavedRecipes()
+      ]);
+      
+      // Mark recipes with their source for proper deletion
+      const recipesWithSource = userRecipes.map(r => ({ ...r, source: 'recipes' }));
+      const savedWithSource = savedRecipes.map(r => ({ ...r, source: 'saved' }));
+      
+      // Merge both arrays
+      const allRecipes = [...recipesWithSource, ...savedWithSource];
+      
+      setRecipes(allRecipes);
     } catch (error) {
       console.error('Error fetching recipes:', error);
       toast.error('Failed to load recipes');
@@ -38,18 +53,24 @@ const Recipes = () => {
     }
   };
 
-  const handleDeleteRecipe = async (recipeId) => {
+  const handleDeleteRecipe = async (recipe) => {
     if (!user) return;
-    if (!confirm('Are you sure you want to remove this recipe from your collection?')) return;
+    if (!confirm('Are you sure you want to delete this recipe?')) return;
     
     try {
-      await removeSavedRecipe(recipeId);
-      setRecipes(recipes.filter(r => r.id !== recipeId));
-      toast.success('Recipe removed! 🗑️');
+      // Delete from the correct location based on source
+      if (recipe.source === 'recipes') {
+        await deleteRecipe(recipe.id);
+      } else {
+        await removeSavedRecipe(recipe.id);
+      }
+      
+      setRecipes(recipes.filter(r => r.id !== recipe.id));
+      toast.success('Recipe deleted! 🗑️');
       setSelectedRecipe(null);
     } catch (error) {
-      console.error('Error removing recipe:', error);
-      toast.error('Failed to remove recipe');
+      console.error('Error deleting recipe:', error);
+      toast.error('Failed to delete recipe');
     }
   };
 
@@ -80,7 +101,27 @@ const Recipes = () => {
       (recipe.name || recipe.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (recipe.description || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
-    return matchesCategory && matchesSearch;
+    
+    // Difficulty filter
+    const matchesDifficulty = !selectedDifficulty || 
+      (recipe.difficulty || '').toLowerCase() === selectedDifficulty.toLowerCase();
+    
+    // Prep time filter
+    let matchesPrepTime = true;
+    if (selectedPrepTime) {
+      const prepTime = recipe.prepTime || recipe.cookTime || 30;
+      if (selectedPrepTime === '< 15 min') {
+        matchesPrepTime = prepTime < 15;
+      } else if (selectedPrepTime === '15-30 min') {
+        matchesPrepTime = prepTime >= 15 && prepTime <= 30;
+      } else if (selectedPrepTime === '30-60 min') {
+        matchesPrepTime = prepTime > 30 && prepTime <= 60;
+      } else if (selectedPrepTime === '> 60 min') {
+        matchesPrepTime = prepTime > 60;
+      }
+    }
+    
+    return matchesCategory && matchesSearch && matchesDifficulty && matchesPrepTime;
   });
 
   return (
@@ -96,8 +137,8 @@ const Recipes = () => {
 
         {/* Search */}
         <div className="flex gap-3 lg:gap-4 mb-8 lg:mb-10">
-          <div className="flex-1 flex items-center gap-3 glass-enhanced rounded-xl lg:rounded-2xl px-5 lg:px-6 py-3 lg:py-4 focus-within:bg-white/90 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10 focus-within:scale-[1.01] transition-all duration-300 hover:shadow-lg">
-            <FiSearch className="text-text-tertiary text-xl lg:text-2xl" />
+          <div className="flex-1 max-w-[calc(100%-120px)] lg:max-w-none flex items-center gap-3 glass-enhanced rounded-xl lg:rounded-2xl px-4 lg:px-6 py-3 lg:py-4 focus-within:bg-white/90 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10 focus-within:scale-[1.01] transition-all duration-300 hover:shadow-lg">
+            <FiSearch className="text-text-tertiary text-xl lg:text-2xl flex-shrink-0" />
             <input
               type="text"
               placeholder="Search recipes..."
@@ -108,15 +149,87 @@ const Recipes = () => {
           </div>
           <button 
             onClick={() => setShowCreateModal(true)}
-            className="w-12 h-12 lg:w-14 lg:h-14 flex items-center justify-center glass-enhanced rounded-xl lg:rounded-2xl text-white bg-primary hover:bg-primary-dark hover:scale-110 transition-all duration-300 shadow-lg hover:shadow-xl active:scale-95"
+            className="w-12 h-12 lg:w-14 lg:h-14 flex-shrink-0 flex items-center justify-center rounded-full text-white bg-[#FF6B35] hover:bg-[#FF5722] hover:scale-110 transition-all duration-300 shadow-lg hover:shadow-xl active:scale-95"
             aria-label="Add Recipe"
           >
             <FiPlus className="text-xl lg:text-2xl" />
           </button>
-          <button className="w-12 h-12 lg:w-14 lg:h-14 flex items-center justify-center glass-enhanced rounded-xl lg:rounded-2xl text-text-secondary hover:text-primary hover:scale-110 transition-all duration-300">
+          <button 
+            onClick={() => setShowFilterPanel(!showFilterPanel)}
+            className="w-12 h-12 lg:w-14 lg:h-14 flex-shrink-0 flex items-center justify-center rounded-full text-white bg-[#FF6B35] hover:bg-[#FF5722] hover:scale-110 transition-all duration-300 shadow-lg hover:shadow-xl active:scale-95"
+            aria-label="Toggle Filters"
+          >
             <FiFilter className="text-xl lg:text-2xl" />
           </button>
         </div>
+
+        {/* Filter Panel */}
+        {showFilterPanel && (
+          <div className="glass-enhanced rounded-xl lg:rounded-2xl p-4 lg:p-6 mb-6 lg:mb-8 animate-fade-in-up">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-text">Filters</h3>
+              <div className="flex items-center gap-2">
+                {(selectedDifficulty || selectedPrepTime) && (
+                  <button
+                    onClick={() => {
+                      setSelectedDifficulty(null);
+                      setSelectedPrepTime(null);
+                    }}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Clear All
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowFilterPanel(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <FiX className="text-text-secondary" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-text mb-2">Difficulty</label>
+                <div className="flex gap-2 flex-wrap">
+                  {['Easy', 'Medium', 'Hard'].map((diff) => (
+                    <button
+                      key={diff}
+                      onClick={() => setSelectedDifficulty(selectedDifficulty === diff ? null : diff)}
+                      className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                        selectedDifficulty === diff
+                          ? 'border-primary bg-primary text-white'
+                          : 'border-gray-200 text-text-secondary hover:border-primary hover:text-primary'
+                      }`}
+                    >
+                      {diff}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-text mb-2">Prep Time</label>
+                <div className="flex gap-2 flex-wrap">
+                  {['< 15 min', '15-30 min', '30-60 min', '> 60 min'].map((time) => (
+                    <button
+                      key={time}
+                      onClick={() => setSelectedPrepTime(selectedPrepTime === time ? null : time)}
+                      className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                        selectedPrepTime === time
+                          ? 'border-primary bg-primary text-white'
+                          : 'border-gray-200 text-text-secondary hover:border-primary hover:text-primary'
+                      }`}
+                    >
+                      {time}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Categories */}
         <div className="flex gap-2 lg:gap-3 overflow-x-auto pb-2 mb-6 lg:mb-8 scrollbar-hide lg:justify-center">
@@ -326,7 +439,7 @@ const Recipes = () => {
                 <Button 
                   variant="error" 
                   icon={<FiTrash2 />}
-                  onClick={() => handleDeleteRecipe(selectedRecipe.id)}
+                  onClick={() => handleDeleteRecipe(selectedRecipe)}
                 >
                   Delete
                 </Button>
@@ -347,7 +460,7 @@ const Recipes = () => {
         {/* Create Recipe Modal - Full Form */}
         {showCreateModal && (
           <Modal isOpen={showCreateModal} onClose={() => !isCreating && setShowCreateModal(false)} title="Create New Recipe">
-            <div className="max-h-[70vh] overflow-y-auto p-1">
+            <div className="max-h-[70vh] overflow-y-auto p-4 md:p-6">
               <CreateRecipeForm
                 onSubmit={handleCreateRecipe}
                 onCancel={() => setShowCreateModal(false)}

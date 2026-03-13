@@ -7,8 +7,8 @@ import Card from '../../../components/common/Card/Card';
 import Badge from '../../../components/common/Badge/Badge';
 import Input from '../../../components/common/Input/Input';
 import Layout from '../../../components/layout/Layout/Layout';
-import { searchRecipesByIngredients } from '../../../services/ai/spoonacularService';
-import { createRecipe } from '../../../services/firebase/recipeService';
+import { searchRecipesByIngredients } from '../../../services/ai/recipeService';
+import { saveRecipeToUser } from '../../../services/firebase/recipeService';
 import { toast } from '../../../store/toastStore';
 
 const suggestedIngredients = ['Chicken', 'Rice', 'Eggs', 'Pasta', 'Tomatoes', 'Onions', 'Garlic', 'Cheese', 'Milk', 'Butter'];
@@ -74,13 +74,18 @@ const MenuGenerator = () => {
         maxCarbs: maxCarbs ? parseInt(maxCarbs) : undefined
       };
 
-      const generatedRecipes = await searchRecipesByIngredients(ingredients, options);
+      const result = await searchRecipesByIngredients(ingredients, options);
       
-      setRecipes(generatedRecipes);
-      toast.success(`Found ${generatedRecipes.length} delicious recipes! 🍳`);
+      setRecipes(result.recipes);
+      
+      // Show appropriate message based on provider
+      if (result.message) {
+        toast.info(result.message);
+      }
+      toast.success(`Found ${result.recipes.length} delicious recipes! 🍳`);
     } catch (error) {
       console.error('Recipe generation error:', error);
-      toast.error('Failed to generate recipes. Please check your API key.');
+      toast.error('Failed to generate recipes. Please try again later.');
     } finally {
       setIsGenerating(false);
     }
@@ -88,12 +93,17 @@ const MenuGenerator = () => {
 
   const handleSaveRecipe = async (recipe) => {
     try {
-      await createRecipe({
+      // Generate a unique ID for the recipe
+      const recipeId = `recipe_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      await saveRecipeToUser({
+        id: recipeId,
+        name: recipe.name,
         title: recipe.name,
         description: recipe.description,
         ingredients: recipe.ingredients.map(ing => ing.original),
         instructions: recipe.instructions,
-        prepTime: `${recipe.prepTime} mins`,
+        prepTime: `${recipe.prepTime}`,
         servings: recipe.servings,
         difficulty: recipe.difficulty,
         nutrition: recipe.nutrition,
@@ -106,7 +116,11 @@ const MenuGenerator = () => {
       toast.success('Recipe saved to your collection! 📖');
     } catch (error) {
       console.error('Save recipe error:', error);
-      toast.error('Failed to save recipe');
+      if (error.message === 'Recipe already saved!') {
+        toast.error('This recipe is already in your collection');
+      } else {
+        toast.error('Failed to save recipe');
+      }
     }
   };
 

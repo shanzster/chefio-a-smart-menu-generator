@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { FiArrowRight, FiBook, FiActivity, FiShare2, FiCamera, FiClock, FiUsers, FiZap, FiCheck, FiTrendingUp, FiAward, FiHeart, FiTarget, FiLayers, FiBarChart, FiMenu, FiX } from 'react-icons/fi';
-import { User, Circle, Star, Square, Leaf, Lightbulb, Pizza, Salad, Beef, UtensilsCrossed, CookingPot } from 'lucide-react';
+import { FiArrowRight, FiBook, FiActivity, FiShare2, FiCamera, FiClock, FiUsers, FiZap, FiCheck, FiTrendingUp, FiAward, FiHeart, FiTarget, FiLayers, FiBarChart, FiX } from 'react-icons/fi';
+import { User, Pizza, Salad, Beef, UtensilsCrossed, CookingPot } from 'lucide-react';
 import Button from '../../components/common/Button/Button';
 import AddToHomeButton from '../../components/common/AddToHomeButton/AddToHomeButton';
 
+// Memoized static data
 const features = [
   {
     icon: FiBook,
@@ -136,278 +137,259 @@ const faqs = [
   }
 ];
 
+// Memoized FAB icons array
+const FAB_ICONS = [UtensilsCrossed, Pizza, Salad, Beef, CookingPot, FiCamera];
+
+// Reduced floating ingredients (from 10 to 4)
+const FLOATING_INGREDIENTS = [
+  { Icon: Pizza, color: 'text-orange-500', left: '15%', top: '25%' },
+  { Icon: Salad, color: 'text-green-500', left: '85%', top: '35%' },
+  { Icon: CookingPot, color: 'text-amber-600', left: '20%', top: '70%' },
+  { Icon: UtensilsCrossed, color: 'text-purple-500', left: '80%', top: '75%' }
+];
+
+// Floating recipe cards
+const FLOATING_RECIPES = [
+  {
+    name: 'Garden Pasta',
+    time: '25 min',
+    image: '🍝',
+    left: '10%',
+    top: '15%',
+    delay: '0s'
+  },
+  {
+    name: 'Fresh Bowl',
+    time: '15 min',
+    image: '🥗',
+    left: '85%',
+    top: '20%',
+    delay: '1s'
+  },
+  {
+    name: 'Morning Toast',
+    time: '10 min',
+    image: '🍞',
+    left: '12%',
+    top: '60%',
+    delay: '2s'
+  },
+  {
+    name: 'Rice Delight',
+    time: '30 min',
+    image: '🍚',
+    left: '88%',
+    top: '65%',
+    delay: '1.5s'
+  }
+];
+
 const Landing = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [fabIconIndex, setFabIconIndex] = useState(0);
-  
-  // Food-related icons for FAB rotation
-  const fabIcons = [
-    UtensilsCrossed,
-    Pizza,
-    Salad,
-    Beef,
-    CookingPot,
-    FiCamera
-  ];
 
-  // Rotate FAB icon every 2 seconds
+  // Memoize FAB icon rotation - increased interval to reduce re-renders
   React.useEffect(() => {
     const interval = setInterval(() => {
-      setFabIconIndex((prev) => (prev + 1) % fabIcons.length);
-    }, 2000);
+      setFabIconIndex((prev) => (prev + 1) % FAB_ICONS.length);
+    }, 3000); // Changed from 2s to 3s
     return () => clearInterval(interval);
   }, []);
-  
-  const CurrentFabIcon = isMobileMenuOpen ? FiX : fabIcons[fabIconIndex];
-  
-  // Floating cooking ingredients for animation
-  const cookingIngredients = [
-    { Icon: Pizza, color: 'text-orange-500' },
-    { Icon: Beef, color: 'text-red-500' },
-    { Icon: Salad, color: 'text-green-500' },
-    { Icon: CookingPot, color: 'text-amber-600' },
-    { Icon: UtensilsCrossed, color: 'text-purple-500' },
-    { Icon: Pizza, color: 'text-yellow-600' },
-    { Icon: Beef, color: 'text-amber-700' },
-    { Icon: Salad, color: 'text-red-600' },
-    { Icon: CookingPot, color: 'text-green-600' },
-    { Icon: UtensilsCrossed, color: 'text-yellow-400' }
-  ];
-  
+
+  const CurrentFabIcon = isMobileMenuOpen ? FiX : FAB_ICONS[fabIconIndex];
+
+  // Memoize toggle handler
+  const toggleMobileMenu = useCallback(() => {
+    setIsMobileMenuOpen(prev => !prev);
+  }, []);
+
+  const closeMobileMenu = useCallback(() => {
+    setIsMobileMenuOpen(false);
+  }, []);
+
+  // Memoized sections
+  const heroSection = useMemo(() => (
+    <section className="relative min-h-screen flex flex-col p-6 lg:px-24 lg:py-12 overflow-hidden">
+      {/* Simplified background decoration - removed heavy blur effects */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* Simplified gradient orbs - removed blur */}
+        <div className="absolute -top-[20%] -right-[10%] w-[600px] h-[600px] bg-orange-200/20 rounded-full" />
+        <div className="absolute bottom-[10%] -left-[20%] w-[500px] h-[500px] bg-red-200/15 rounded-full" />
+        
+        {/* Reduced floating ingredients (4 instead of 10) */}
+        {FLOATING_INGREDIENTS.map(({ Icon, color, left, top }, index) => (
+          <div
+            key={index}
+            className={`absolute opacity-15 ${color}`}
+            style={{
+              left,
+              top,
+              animation: `float ${4 + (index % 2)}s ease-in-out infinite`,
+              animationDelay: `${index * 0.5}s`,
+              willChange: 'transform'
+            }}
+          >
+            <Icon className="w-8 h-8 lg:w-10 lg:h-10" />
+          </div>
+        ))}
+
+        {/* Floating Recipe Cards */}
+        {FLOATING_RECIPES.map((recipe, index) => (
+          <div
+            key={index}
+            className="absolute hidden lg:block"
+            style={{
+              left: recipe.left,
+              top: recipe.top,
+              animation: `float ${5 + (index % 2)}s ease-in-out infinite`,
+              animationDelay: recipe.delay,
+              willChange: 'transform'
+            }}
+          >
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-4 w-40 border border-gray-100 hover:scale-105 transition-transform duration-300">
+              <div className="text-5xl mb-2 text-center">{recipe.image}</div>
+              <h4 className="font-semibold text-sm text-text mb-1 text-center">{recipe.name}</h4>
+              <div className="flex items-center justify-center gap-1 text-xs text-text-secondary">
+                <FiClock className="w-3 h-3" />
+                <span>{recipe.time}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop Header */}
+      <header className="hidden lg:flex items-center justify-center py-4 z-10">
+        <nav className="flex items-center gap-2 px-6 py-3 bg-white/80 border border-gray-200 rounded-full shadow-md">
+          <Link to="/menu-generator" className="text-sm font-medium text-primary px-5 py-2 rounded-full hover:bg-primary hover:text-white transition-colors duration-200">
+            Smart Menu
+          </Link>
+          <Link to="/scanner" className="text-sm font-medium text-primary px-5 py-2 rounded-full hover:bg-primary hover:text-white transition-colors duration-200">
+            Food Scanner
+          </Link>
+          <Link to="/register" className="text-sm font-medium text-primary px-5 py-2 rounded-full hover:bg-primary hover:text-white transition-colors duration-200">
+            Sign Up
+          </Link>
+          <Link to="/login" className="text-sm font-medium text-white bg-primary px-5 py-2 rounded-full hover:bg-primary-dark transition-colors duration-200 shadow-md">
+            Sign In
+          </Link>
+        </nav>
+      </header>
+
+      {/* Mobile FAB */}
+      <div className="lg:hidden fixed bottom-6 right-6 z-50">
+        <button
+          onClick={toggleMobileMenu}
+          className="w-14 h-14 bg-gradient-to-br from-primary to-primary-dark rounded-full shadow-2xl flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-transform duration-200"
+        >
+          <CurrentFabIcon className="text-2xl" />
+        </button>
+
+        {isMobileMenuOpen && (
+          <>
+            <div 
+              className="fixed inset-0 bg-black/40 -z-10"
+              onClick={closeMobileMenu}
+            />
+            
+            <div className="absolute bottom-20 right-0 flex flex-col gap-3">
+              <Link 
+                to="/menu-generator" 
+                className="flex items-center gap-3 px-6 py-3 bg-white rounded-full shadow-xl text-text font-medium hover:bg-primary hover:text-white transition-colors duration-200 whitespace-nowrap"
+                onClick={closeMobileMenu}
+              >
+                <UtensilsCrossed className="w-5 h-5" />
+                Smart Menu
+              </Link>
+              <Link 
+                to="/scanner" 
+                className="flex items-center gap-3 px-6 py-3 bg-white rounded-full shadow-xl text-text font-medium hover:bg-primary hover:text-white transition-colors duration-200 whitespace-nowrap"
+                onClick={closeMobileMenu}
+              >
+                <FiCamera className="w-5 h-5" />
+                Food Scanner
+              </Link>
+              <Link 
+                to="/register" 
+                className="flex items-center gap-3 px-6 py-3 bg-white rounded-full shadow-xl text-text font-medium hover:bg-primary hover:text-white transition-colors duration-200 whitespace-nowrap"
+                onClick={closeMobileMenu}
+              >
+                <FiUsers className="w-5 h-5" />
+                Sign Up
+              </Link>
+              <Link 
+                to="/login" 
+                className="flex items-center gap-3 px-6 py-3 bg-primary rounded-full shadow-xl text-white font-medium hover:bg-primary-dark transition-colors duration-200 whitespace-nowrap"
+                onClick={closeMobileMenu}
+              >
+                <User className="w-5 h-5" />
+                Sign In
+              </Link>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Hero content */}
+      <div className="flex-1 flex flex-col justify-center max-w-[700px] lg:max-w-[800px] py-10 z-10">
+        <div className="mb-6">
+          <span className="inline-flex items-center gap-2 px-5 py-2 bg-white/70 border border-gray-200 rounded-full text-sm font-medium text-text-secondary">
+            <User className="w-5 h-5 text-primary" />
+            For Students & Aspiring Chefs
+          </span>
+        </div>
+        
+        <h1 className="text-[clamp(2rem,6vw,3.5rem)] font-bold leading-[1.1] text-text tracking-tight mb-6">
+          Turn Ingredients<br />
+          Into <span className="text-primary">Masterpieces</span>
+        </h1>
+        
+        <p className="text-base lg:text-lg leading-relaxed text-text-secondary mb-10">
+          Your smart kitchen companion designed for students and aspiring chefs. Generate personalized recipes from your available ingredients, 
+          scan and identify foods instantly, analyze complete nutrition information, and share your culinary creations with the world through QR codes. 
+          Transform your cooking experience with AI-powered recipe suggestions that help you reduce waste, save time, and create amazing meals.
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Button to="/menu-generator" size="large" icon={<FiArrowRight />} iconPosition="right">
+            Start Cooking Now
+          </Button>
+          <AddToHomeButton 
+            variant="glass" 
+            size="large"
+            customText="Install the App"
+          />
+        </div>
+        
+        {/* Cooking stats */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 mt-12">
+          <div className="text-center lg:text-left">
+            <div className="text-2xl lg:text-3xl font-bold text-primary mb-1">10K+</div>
+            <div className="text-xs text-text-secondary">Recipes Generated</div>
+          </div>
+          <div className="text-center lg:text-left">
+            <div className="text-2xl lg:text-3xl font-bold text-primary mb-1">5K+</div>
+            <div className="text-xs text-text-secondary">Active Users</div>
+          </div>
+          <div className="text-center lg:text-left">
+            <div className="text-2xl lg:text-3xl font-bold text-primary mb-1">50K+</div>
+            <div className="text-xs text-text-secondary">Meals Shared</div>
+          </div>
+          <div className="text-center lg:text-left">
+            <div className="text-2xl lg:text-3xl font-bold text-primary mb-1">1000+</div>
+            <div className="text-xs text-text-secondary">Ingredients Database</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  ), [CurrentFabIcon, isMobileMenuOpen, toggleMobileMenu, closeMobileMenu]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 overflow-x-hidden">
-      {/* Hero Section */}
-      <section className="relative min-h-screen flex flex-col p-6 lg:px-24 lg:py-12 overflow-hidden">
-        {/* Cooking-themed background decoration */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          {/* Warm gradient orbs */}
-          <div className="absolute -top-[20%] -right-[10%] w-[600px] h-[600px] bg-orange-200/30 rounded-full blur-[100px]" />
-          <div className="absolute bottom-[10%] -left-[20%] w-[500px] h-[500px] bg-red-200/20 rounded-full blur-[100px]" />
-          <div className="absolute top-[40%] right-[20%] w-[300px] h-[300px] bg-amber-200/25 rounded-full blur-[80px]" />
-          
-          {/* Floating cooking ingredients */}
-          {cookingIngredients.map(({ Icon, color }, index) => (
-            <div
-              key={index}
-              className={`absolute opacity-20 animate-float ${color}`}
-              style={{
-                left: `${10 + index * 8}%`,
-                top: `${20 + (index % 3) * 25}%`,
-                animationDelay: `${index * 0.3}s`,
-                animationDuration: `${4 + (index % 3)}s`
-              }}
-            >
-              <Icon className="w-8 h-8 lg:w-10 lg:h-10" />
-            </div>
-          ))}
-        </div>
-
-        {/* Floating Recipe Cards - visible in hero section only on larger screens */}
-        <div className="hidden lg:block absolute right-[5%] top-[20%] z-0 pointer-events-none opacity-60">
-          <div className="relative w-[320px]">
-            {/* Recipe card showcase */}
-            <div className="glass-enhanced rounded-2xl p-6 shadow-2xl rotate-3 animate-float">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-xl flex items-center justify-center">
-                  <Pizza className="w-8 h-8 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg">Pasta Carbonara</h3>
-                  <p className="text-sm text-text-secondary">25 mins • 4 servings</p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">Pasta</span>
-                <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">Eggs</span>
-                <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">Bacon</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="hidden lg:block absolute left-[5%] top-[50%] z-0 pointer-events-none opacity-60">
-          <div className="relative w-[320px]">
-            {/* Recipe card showcase 2 */}
-            <div className="glass-enhanced rounded-2xl p-6 shadow-2xl -rotate-3 animate-float" style={{ animationDelay: '1s' }}>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl flex items-center justify-center">
-                  <Salad className="w-8 h-8 text-green-600" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg">Caesar Salad</h3>
-                  <p className="text-sm text-text-secondary">15 mins • 2 servings</p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <span className="px-3 py-1 bg-green-500/10 text-green-700 rounded-full text-xs font-medium">Lettuce</span>
-                <span className="px-3 py-1 bg-green-500/10 text-green-700 rounded-full text-xs font-medium">Cheese</span>
-                <span className="px-3 py-1 bg-green-500/10 text-green-700 rounded-full text-xs font-medium">Croutons</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="hidden lg:block absolute right-[8%] bottom-[15%] z-0 pointer-events-none opacity-60">
-          <div className="relative w-[320px]">
-            {/* Recipe card showcase 3 */}
-            <div className="glass-enhanced rounded-2xl p-6 shadow-2xl rotate-6 animate-float" style={{ animationDelay: '2s' }}>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-amber-500/20 to-yellow-500/20 rounded-xl flex items-center justify-center">
-                  <Beef className="w-8 h-8 text-amber-600" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg">Chicken Stir Fry</h3>
-                  <p className="text-sm text-text-secondary">30 mins • 3 servings</p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <span className="px-3 py-1 bg-amber-500/10 text-amber-700 rounded-full text-xs font-medium">Chicken</span>
-                <span className="px-3 py-1 bg-amber-500/10 text-amber-700 rounded-full text-xs font-medium">Veggies</span>
-                <span className="px-3 py-1 bg-amber-500/10 text-amber-700 rounded-full text-xs font-medium">Soy Sauce</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Header - Desktop: Frosted Pill Navbar, Mobile: Hidden (FAB instead) */}
-        <header className="hidden lg:flex items-center justify-center py-4 z-10">
-          <nav className="flex items-center gap-2 px-6 py-3 bg-primary/10 backdrop-blur-xl border border-primary/20 rounded-full shadow-lg">
-            <Link to="/menu-generator" className="text-sm font-medium text-primary px-5 py-2 rounded-full hover:bg-primary hover:text-white transition-all duration-300">
-              Smart Menu
-            </Link>
-            <Link to="/scanner" className="text-sm font-medium text-primary px-5 py-2 rounded-full hover:bg-primary hover:text-white transition-all duration-300">
-              Food Scanner
-            </Link>
-            <Link to="/register" className="text-sm font-medium text-primary px-5 py-2 rounded-full hover:bg-primary hover:text-white transition-all duration-300">
-              Sign Up
-            </Link>
-            <Link to="/login" className="text-sm font-medium text-white bg-primary px-5 py-2 rounded-full hover:bg-primary-dark transition-all duration-300 shadow-md">
-              Sign In
-            </Link>
-          </nav>
-        </header>
-
-        {/* Mobile FAB - Only visible on mobile */}
-        <div className="lg:hidden fixed bottom-6 right-6 z-50">
-          {/* FAB Button */}
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="w-14 h-14 bg-gradient-to-br from-primary to-primary-dark rounded-full shadow-2xl flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-all duration-300"
-          >
-            <div className="transition-all duration-500 ease-in-out transform" key={isMobileMenuOpen ? 'close' : fabIconIndex}>
-              <CurrentFabIcon className="text-2xl animate-fade-in" />
-            </div>
-          </button>
-
-          {/* Mobile Menu */}
-          {isMobileMenuOpen && (
-            <>
-              {/* Backdrop */}
-              <div 
-                className="fixed inset-0 bg-black/40 backdrop-blur-sm -z-10 animate-fade-in"
-                onClick={() => setIsMobileMenuOpen(false)}
-              />
-              
-              {/* Menu Items */}
-              <div className="absolute bottom-20 right-0 flex flex-col gap-3">
-                <Link 
-                  to="/menu-generator" 
-                  className="flex items-center gap-3 px-6 py-3 bg-white rounded-full shadow-xl text-text font-medium hover:bg-primary hover:text-white transition-all duration-300 whitespace-nowrap animate-slide-in-right"
-                  style={{ animationDelay: '0.05s' }}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <UtensilsCrossed className="w-5 h-5" />
-                  Smart Menu
-                </Link>
-                <Link 
-                  to="/scanner" 
-                  className="flex items-center gap-3 px-6 py-3 bg-white rounded-full shadow-xl text-text font-medium hover:bg-primary hover:text-white transition-all duration-300 whitespace-nowrap animate-slide-in-right"
-                  style={{ animationDelay: '0.1s' }}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <FiCamera className="w-5 h-5" />
-                  Food Scanner
-                </Link>
-                <Link 
-                  to="/register" 
-                  className="flex items-center gap-3 px-6 py-3 bg-white rounded-full shadow-xl text-text font-medium hover:bg-primary hover:text-white transition-all duration-300 whitespace-nowrap animate-slide-in-right"
-                  style={{ animationDelay: '0.15s' }}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <FiUsers className="w-5 h-5" />
-                  Sign Up
-                </Link>
-                <Link 
-                  to="/login" 
-                  className="flex items-center gap-3 px-6 py-3 bg-primary rounded-full shadow-xl text-white font-medium hover:bg-primary-dark transition-all duration-300 whitespace-nowrap animate-slide-in-right"
-                  style={{ animationDelay: '0.2s' }}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <User className="w-5 h-5" />
-                  Sign In
-                </Link>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Hero content */}
-        <div className="flex-1 flex flex-col justify-center max-w-[700px] lg:max-w-[800px] py-10 z-10">
-          <div className="mb-6 animate-fade-in-up">
-            <span className="inline-flex items-center gap-2 px-5 py-2 glass-enhanced rounded-full text-sm font-medium text-text-secondary transition-all hover:scale-105">
-              <User className="w-5 h-5 text-primary" />
-              For Students & Aspiring Chefs
-            </span>
-          </div>
-          
-          <h1 className="text-[clamp(2rem,6vw,3.5rem)] font-bold leading-[1.1] text-text tracking-tight mb-6 animate-fade-in-up animation-delay-100">
-            Turn Ingredients<br />
-            Into <span className="gradient-animated">Masterpieces</span>
-          </h1>
-          
-          <p className="text-base lg:text-lg leading-relaxed text-text-secondary mb-10 animate-fade-in-up animation-delay-200">
-            Your smart kitchen companion designed for students and aspiring chefs. Generate personalized recipes from your available ingredients, 
-            scan and identify foods instantly, analyze complete nutrition information, and share your culinary creations with the world through QR codes. 
-            Transform your cooking experience with AI-powered recipe suggestions that help you reduce waste, save time, and create amazing meals.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 animate-fade-in-up animation-delay-300">
-            <Button to="/menu-generator" size="large" icon={<FiArrowRight />} iconPosition="right" className="glow">
-              Start Cooking Now
-            </Button>
-            <AddToHomeButton 
-              variant="glass" 
-              size="large" 
-              className="hover-lift"
-              customText="Install the App"
-            />
-          </div>
-          
-          {/* Cooking stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 mt-12 animate-fade-in-up animation-delay-400">
-            <div className="text-center lg:text-left">
-              <div className="text-2xl lg:text-3xl font-bold text-primary mb-1">10K+</div>
-              <div className="text-xs text-text-secondary">Recipes Generated</div>
-            </div>
-            <div className="text-center lg:text-left">
-              <div className="text-2xl lg:text-3xl font-bold text-primary mb-1">5K+</div>
-              <div className="text-xs text-text-secondary">Active Users</div>
-            </div>
-            <div className="text-center lg:text-left">
-              <div className="text-2xl lg:text-3xl font-bold text-primary mb-1">50K+</div>
-              <div className="text-xs text-text-secondary">Meals Shared</div>
-            </div>
-            <div className="text-center lg:text-left">
-              <div className="text-2xl lg:text-3xl font-bold text-primary mb-1">1000+</div>
-              <div className="text-xs text-text-secondary">Ingredients Database</div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {heroSection}
 
       {/* Features Section */}
       <section className="py-20 px-6 lg:px-24 lg:py-24 bg-gradient-to-b from-white to-amber-50/30 relative overflow-hidden">
-        {/* Cooking utensils decoration */}
         <div className="absolute top-10 right-10 opacity-10 rotate-12">
           <UtensilsCrossed className="w-16 h-16 text-text-tertiary" />
         </div>
@@ -426,14 +408,13 @@ const Landing = () => {
           </div>
 
           <div className="grid md:grid-cols-2 gap-6 lg:gap-8 mb-16">
-            {features.map((feature, index) => (
+            {features.map((feature) => (
               <div 
                 key={feature.title} 
-                className="bg-white rounded-2xl p-8 lg:p-10 animate-fade-in-up interactive-card shadow-lg hover:shadow-xl border border-white/50"
-                style={{ animationDelay: `${index * 0.1}s` }}
+                className="bg-white rounded-2xl p-8 lg:p-10 shadow-lg hover:shadow-xl transition-shadow duration-300 border border-white/50"
               >
                 <div className="flex items-start gap-4 mb-4">
-                  <div className="w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-2xl flex items-center justify-center flex-shrink-0 transition-transform hover:scale-110 hover:rotate-3">
+                  <div className="w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-2xl flex items-center justify-center flex-shrink-0">
                     <feature.icon className="text-primary text-2xl lg:text-3xl" />
                   </div>
                   <div className="flex-1">
@@ -450,11 +431,10 @@ const Landing = () => {
           <div className="mt-20">
             <h3 className="text-xl lg:text-2xl font-bold text-center mb-12">Why Choose Chefio?</h3>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
-              {benefits.map((benefit, index) => (
+              {benefits.map((benefit) => (
                 <div 
                   key={benefit.title}
-                  className="bg-white/60 backdrop-blur-sm rounded-xl p-6 lg:p-8 animate-fade-in-up border border-white/50 hover:bg-white/80 transition-all"
-                  style={{ animationDelay: `${index * 0.1}s` }}
+                  className="bg-white/60 rounded-xl p-6 lg:p-8 border border-white/50 hover:bg-white/80 transition-colors duration-300"
                 >
                   <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-4">
                     <benefit.icon className="text-primary text-xl" />
@@ -485,8 +465,7 @@ const Landing = () => {
             {howItWorks.map((step, index) => (
               <div 
                 key={step.step}
-                className="relative animate-fade-in-up"
-                style={{ animationDelay: `${index * 0.15}s` }}
+                className="relative"
               >
                 <div className="bg-gradient-to-br from-primary/10 to-secondary/10 rounded-2xl p-8 lg:p-10 text-center hover:scale-105 transition-transform duration-300">
                   <div className="text-5xl font-bold text-primary/20 mb-4">{step.step}</div>
@@ -518,11 +497,10 @@ const Landing = () => {
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
-            {useCases.map((useCase, index) => (
+            {useCases.map((useCase) => (
               <div 
                 key={useCase.title}
-                className="bg-white rounded-2xl p-8 lg:p-10 shadow-lg hover:shadow-xl transition-all duration-300 animate-fade-in-up border border-white/50"
-                style={{ animationDelay: `${index * 0.1}s` }}
+                className="bg-white rounded-2xl p-8 lg:p-10 shadow-lg hover:shadow-xl transition-shadow duration-300 border border-white/50"
               >
                 <div className="flex items-start gap-4 mb-4">
                   <div className="w-14 h-14 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -555,8 +533,7 @@ const Landing = () => {
             {faqs.map((faq, index) => (
               <div 
                 key={index}
-                className="bg-white border-2 border-gray-100 rounded-xl p-6 lg:p-8 hover:border-primary/30 transition-all duration-300 animate-fade-in-up shadow-sm hover:shadow-md"
-                style={{ animationDelay: `${index * 0.1}s` }}
+                className="bg-white border-2 border-gray-100 rounded-xl p-6 lg:p-8 hover:border-primary/30 transition-colors duration-300 shadow-sm hover:shadow-md"
               >
                 <h3 className="text-base lg:text-lg font-bold mb-3 flex items-start gap-3">
                   <FiCheck className="text-primary mt-1 flex-shrink-0" />
@@ -571,123 +548,39 @@ const Landing = () => {
 
       {/* CTA Section */}
       <section className="py-20 px-6 lg:px-24 lg:py-24 bg-gradient-to-br from-primary/5 via-amber-50/50 to-orange-50/50 relative overflow-hidden">
-        {/* Cooking icons floating */}
-        <div className="absolute top-20 left-20 opacity-20 animate-float">
-          <UtensilsCrossed className="w-14 h-14 text-primary" />
+        <div className="absolute top-20 left-20 opacity-20">
+          <UtensilsCrossed className="w-14 h-14 text-primary" style={{ animation: 'float 4s ease-in-out infinite' }} />
         </div>
-        <div className="absolute bottom-20 right-20 opacity-20 animate-float" style={{ animationDelay: '1s' }}>
-          <CookingPot className="w-14 h-14 text-primary" />
+        <div className="absolute bottom-20 right-20 opacity-20">
+          <CookingPot className="w-14 h-14 text-primary" style={{ animation: 'float 5s ease-in-out infinite', animationDelay: '1s' }} />
         </div>
         
-        <div className="max-w-[600px] mx-auto text-center glass-enhanced rounded-3xl p-12 lg:p-16 shadow-2xl animate-scale-in-up relative z-10">
-          <div className="mb-6 animate-bounce flex justify-center">
-            <FiZap className="w-16 h-16 text-primary" />
-          </div>
-          <h2 className="text-2xl lg:text-3xl font-bold mb-4">Ready to start cooking?</h2>
-          <p className="text-base text-text-secondary mb-10">
-            Join thousands of students and chefs discovering new recipes every day. 
-            Turn your kitchen into a culinary adventure!
+        <div className="max-w-[600px] mx-auto text-center bg-white/70 border border-gray-200 rounded-3xl p-12 relative z-10">
+          <h2 className="text-[clamp(1.75rem,4vw,2.5rem)] font-bold mb-6 leading-[1.2]">
+            Ready to Transform Your <span className="text-primary">Cooking?</span>
+          </h2>
+          <p className="text-base text-text-secondary mb-8">
+            Join thousands of students and home cooks who are already creating amazing meals with Chefio.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Button to="/menu-generator" size="large" className="flex-1 glow">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button to="/menu-generator" size="large" icon={<FiArrowRight />} iconPosition="right">
               Start Cooking Free
             </Button>
             <AddToHomeButton 
               variant="outline" 
-              size="large" 
-              className="flex-1 hover-lift"
+              size="large"
               customText="Install the App"
             />
-          </div>
-        </div>
-      </section>
-
-      {/* Final CTA Section */}
-      <section className="py-20 px-6 lg:px-24 lg:py-24 bg-gradient-to-br from-primary via-primary-dark to-secondary relative overflow-hidden">
-        <div className="max-w-[800px] mx-auto text-center text-white relative z-10">
-          <h2 className="text-2xl lg:text-4xl font-bold mb-6">
-            Ready to Transform Your Kitchen?
-          </h2>
-          <p className="text-base lg:text-lg mb-10 text-white/90 leading-relaxed">
-            Join thousands of students and chefs who are already creating amazing meals with Chefio. 
-            Start your culinary journey today - it's free, easy, and fun!
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button to="/menu-generator" size="large" className="bg-white hover:bg-white/90 hover:scale-105">
-              <span className="text-primary">Try It Free Now</span>
-            </Button>
-            <AddToHomeButton 
-              variant="outline" 
-              size="large" 
-              className="border-2 border-white text-white hover:bg-white/10 hover:scale-105"
-              customText="Install the App"
-            />
-          </div>
-          <div className="mt-12 flex flex-wrap justify-center gap-8 text-white/80">
-            <div className="flex items-center gap-2">
-              <FiCheck className="text-white" />
-              <span>No credit card required</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <FiCheck className="text-white" />
-              <span>Free forever</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <FiCheck className="text-white" />
-              <span>Instant access</span>
-            </div>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-16 px-6 lg:px-24 bg-gray-50">
-        <div className="max-w-[1200px] mx-auto">
-          <div className="grid md:grid-cols-4 gap-8 lg:gap-12 mb-12">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center">
-                  <User className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-bold text-text">Chefio</span>
-              </div>
-              <p className="text-sm text-text-secondary leading-relaxed">
-                Your smart kitchen companion for students and aspiring chefs. Generate recipes, scan ingredients, and share your culinary creations.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Features</h4>
-              <ul className="space-y-2 text-sm text-text-secondary">
-                <li><Link to="/menu-generator" className="hover:text-primary transition-colors">Recipe Generator</Link></li>
-                <li><Link to="/scanner" className="hover:text-primary transition-colors">Ingredient Scanner</Link></li>
-                <li><Link to="/cook/nutrition" className="hover:text-primary transition-colors">Nutrition Analysis</Link></li>
-                <li><Link to="/cook/qr-generator" className="hover:text-primary transition-colors">QR Sharing</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Resources</h4>
-              <ul className="space-y-2 text-sm text-text-secondary">
-                <li><a href="#" className="hover:text-primary transition-colors">How It Works</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Recipe Database</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Nutrition Guide</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Cooking Tips</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Get Started</h4>
-              <ul className="space-y-2 text-sm text-text-secondary">
-                <li><Link to="/register" className="hover:text-primary transition-colors">Create Account</Link></li>
-                <li><Link to="/login" className="hover:text-primary transition-colors">Sign In</Link></li>
-                <li><Link to="/menu-generator" className="hover:text-primary transition-colors">Try Free</Link></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Contact Support</a></li>
-              </ul>
-            </div>
-          </div>
-          <div className="pt-8 border-t border-gray-200 text-center">
-            <p className="text-sm text-text-tertiary">
-              © 2024 Chefio. A Smart Menu Generator for Hospitality Students & Aspiring Chefs.
-            </p>
-          </div>
+      <footer className="py-12 px-6 bg-white border-t border-gray-100">
+        <div className="max-w-[1200px] mx-auto text-center">
+          <p className="text-sm text-text-secondary">
+            © 2024 Chefio. Made with <span className="text-primary">❤</span> for students and aspiring chefs.
+          </p>
         </div>
       </footer>
     </div>

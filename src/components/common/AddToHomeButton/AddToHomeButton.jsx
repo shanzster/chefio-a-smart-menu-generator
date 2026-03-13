@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FiDownload } from 'react-icons/fi';
-import { FaApple, FaAndroid } from 'react-icons/fa';
+import { FiDownload, FiX, FiSmartphone } from 'react-icons/fi';
+import { FaApple, FaAndroid, FaChrome } from 'react-icons/fa';
+import Modal from '../Modal/Modal';
 
 const AddToHomeButton = ({ 
   variant = 'primary', 
@@ -12,19 +13,30 @@ const AddToHomeButton = ({
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
-  const [hasAutoPrompted, setHasAutoPrompted] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
+  const [platform, setPlatform] = useState('unknown');
 
   useEffect(() => {
     // Check if app is already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    if (window.matchMedia('(display-mode: standalone)').matches || 
+        window.navigator.standalone === true) {
       setIsInstalled(true);
       return;
     }
 
-    // Check if we've already auto-prompted in this session
-    const hasPrompted = sessionStorage.getItem('pwa-auto-prompted');
-    if (hasPrompted) {
-      setHasAutoPrompted(true);
+    // Detect platform
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isAndroid = /Android/.test(navigator.userAgent);
+    const isChrome = /Chrome/.test(navigator.userAgent);
+    
+    if (isIOS) {
+      setPlatform('ios');
+    } else if (isAndroid) {
+      setPlatform('android');
+    } else if (isChrome) {
+      setPlatform('chrome');
+    } else {
+      setPlatform('desktop');
     }
 
     // Listen for the beforeinstallprompt event
@@ -33,25 +45,6 @@ const AddToHomeButton = ({
       e.preventDefault();
       setDeferredPrompt(e);
       setIsInstallable(true);
-
-      // Auto-prompt on first visit (after a short delay)
-      if (!hasPrompted) {
-        setTimeout(() => {
-          console.log('🚀 [PWA] Auto-showing install prompt');
-          e.prompt();
-          sessionStorage.setItem('pwa-auto-prompted', 'true');
-          setHasAutoPrompted(true);
-
-          e.userChoice.then((choiceResult) => {
-            console.log(`👤 [PWA] User response: ${choiceResult.outcome}`);
-            if (choiceResult.outcome === 'accepted') {
-              console.log('✅ [PWA] User accepted the install prompt');
-            } else {
-              console.log('❌ [PWA] User dismissed the install prompt');
-            }
-          });
-        }, 2000); // Wait 2 seconds after page load
-      }
     };
 
     // Listen for successful installation
@@ -60,6 +53,7 @@ const AddToHomeButton = ({
       setIsInstalled(true);
       setIsInstallable(false);
       setDeferredPrompt(null);
+      setShowInstructions(false);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -72,34 +66,26 @@ const AddToHomeButton = ({
   }, []);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) {
-      console.log('⚠️ [PWA] No install prompt available yet');
-      // Show a helpful message to the user
-      alert('To install this app:\n\n' +
-            'Desktop (Chrome/Edge):\n' +
-            '• Look for the install icon in the address bar\n' +
-            '• Or check browser menu > "Install Chefio"\n\n' +
-            'Mobile (Android):\n' +
-            '• Tap browser menu > "Install app" or "Add to Home screen"\n\n' +
-            'Mobile (iOS Safari):\n' +
-            '• Tap Share button > "Add to Home Screen"');
-      return;
-    }
+    if (deferredPrompt) {
+      console.log('🚀 [PWA] Showing install prompt');
+      deferredPrompt.prompt();
 
-    console.log('🚀 [PWA] Showing install prompt');
-    deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`👤 [PWA] User response: ${outcome}`);
 
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`👤 [PWA] User response: ${outcome}`);
+      if (outcome === 'accepted') {
+        console.log('✅ [PWA] User accepted the install prompt');
+      } else {
+        console.log('❌ [PWA] User dismissed the install prompt');
+      }
 
-    if (outcome === 'accepted') {
-      console.log('✅ [PWA] User accepted the install prompt');
+      setDeferredPrompt(null);
+      setIsInstallable(false);
     } else {
-      console.log('❌ [PWA] User dismissed the install prompt');
+      // Show manual instructions
+      console.log('⚠️ [PWA] No install prompt available, showing instructions');
+      setShowInstructions(true);
     }
-
-    setDeferredPrompt(null);
-    setIsInstallable(false);
   };
 
   // Don't show button if already installed
@@ -107,13 +93,10 @@ const AddToHomeButton = ({
     return null;
   }
 
-  // If not installable yet, show button but it won't do anything (visual only)
-  // This ensures the button is always visible for consistent UI
-
   const sizeClasses = {
-    small: 'px-4 py-2 text-sm',
-    medium: 'px-6 py-3 text-base',
-    large: 'px-8 py-4 text-lg'
+    small: 'h-9 px-4 text-sm',
+    medium: 'h-12 px-6 text-base',
+    large: 'h-14 px-8 text-md'
   };
 
   const variantClasses = {
@@ -122,42 +105,170 @@ const AddToHomeButton = ({
     outline: 'border-2 border-primary text-primary hover:bg-primary hover:text-white'
   };
 
-  const buttonText = customText || 'Add to Home Screen';
+  const buttonText = customText || 'Install App';
 
   return (
-    <button
-      onClick={handleInstallClick}
-      className={`
-        inline-flex flex-col items-center justify-center gap-2 rounded-2xl font-medium
-        transition-all duration-300 hover:scale-105 active:scale-95
-        ${sizeClasses[size]}
-        ${variantClasses[variant]}
-        ${className}
-      `}
-    >
-      <div className="flex items-center gap-2">
-        <span className="font-semibold">{buttonText}</span>
-      </div>
-      
-      {/* Platform logos */}
-      <div className="flex items-center gap-3 text-sm opacity-90">
-        <div className="flex items-center gap-1.5">
-          <FaApple className="text-lg" />
-          <span className="text-xs font-medium">iOS</span>
+    <>
+      <button
+        onClick={handleInstallClick}
+        className={`
+          inline-flex flex-col items-center justify-center gap-2 rounded-2xl font-medium
+          transition-all duration-300 hover:scale-105 active:scale-95
+          ${sizeClasses[size]}
+          ${variantClasses[variant]}
+          ${className}
+        `}
+      >
+        <div className="flex items-center gap-2">
+          <FiDownload className="text-xl" />
+          <span className="font-semibold">{buttonText}</span>
         </div>
-        <div className="w-px h-4 bg-current opacity-30"></div>
-        <div className="flex items-center gap-1.5">
-          <FaAndroid className="text-lg" />
-          <span className="text-xs font-medium">Android</span>
+        
+        {/* Platform logos */}
+        <div className="flex items-center gap-3 text-sm opacity-90">
+          <div className="flex items-center gap-1.5">
+            <FaApple className="text-lg" />
+            <span className="text-xs font-medium">iOS</span>
+          </div>
+          <div className="w-px h-4 bg-current opacity-30"></div>
+          <div className="flex items-center gap-1.5">
+            <FaAndroid className="text-lg" />
+            <span className="text-xs font-medium">Android</span>
+          </div>
         </div>
-      </div>
-      
-      {subtitle && (
-        <span className="text-xs opacity-75 mt-1">
-          {subtitle}
-        </span>
-      )}
-    </button>
+        
+        {subtitle && (
+          <span className="text-xs opacity-75 mt-1">
+            {subtitle}
+          </span>
+        )}
+      </button>
+
+      {/* Installation Instructions Modal */}
+      <Modal
+        isOpen={showInstructions}
+        onClose={() => setShowInstructions(false)}
+        title="Install Chefio App"
+      >
+        <div className="p-6 space-y-6">
+          <div className="flex items-center gap-3 p-4 bg-primary/10 rounded-lg">
+            <FiSmartphone className="w-8 h-8 text-primary flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-text">Add to Home Screen</p>
+              <p className="text-xs text-text-secondary">
+                Install Chefio for a better experience
+              </p>
+            </div>
+          </div>
+
+          {platform === 'ios' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-primary">
+                <FaApple className="text-2xl" />
+                <h3 className="font-semibold">iOS Safari Instructions</h3>
+              </div>
+              <ol className="space-y-3 text-sm text-text-secondary">
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-semibold">
+                    1
+                  </span>
+                  <span>Tap the <strong>Share button</strong> (square with arrow pointing up) at the bottom of Safari</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-semibold">
+                    2
+                  </span>
+                  <span>Scroll down and tap <strong>"Add to Home Screen"</strong></span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-semibold">
+                    3
+                  </span>
+                  <span>Tap <strong>"Add"</strong> in the top right corner</span>
+                </li>
+              </ol>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <p className="text-xs text-amber-800">
+                  <strong>Note:</strong> This feature only works in Safari browser on iOS devices.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {platform === 'android' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-green-600">
+                <FaAndroid className="text-2xl" />
+                <h3 className="font-semibold">Android Instructions</h3>
+              </div>
+              <ol className="space-y-3 text-sm text-text-secondary">
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-green-600 text-white flex items-center justify-center text-xs font-semibold">
+                    1
+                  </span>
+                  <span>Tap the <strong>menu button</strong> (⋮) in your browser</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-green-600 text-white flex items-center justify-center text-xs font-semibold">
+                    2
+                  </span>
+                  <span>Select <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong></span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-green-600 text-white flex items-center justify-center text-xs font-semibold">
+                    3
+                  </span>
+                  <span>Tap <strong>"Install"</strong> to confirm</span>
+                </li>
+              </ol>
+            </div>
+          )}
+
+          {(platform === 'chrome' || platform === 'desktop') && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-blue-600">
+                <FaChrome className="text-2xl" />
+                <h3 className="font-semibold">Desktop Instructions</h3>
+              </div>
+              <ol className="space-y-3 text-sm text-text-secondary">
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-semibold">
+                    1
+                  </span>
+                  <span>Look for the <strong>install icon</strong> (⊕ or computer icon) in the address bar</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-semibold">
+                    2
+                  </span>
+                  <span>Or open browser menu and select <strong>"Install Chefio"</strong></span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-semibold">
+                    3
+                  </span>
+                  <span>Click <strong>"Install"</strong> to confirm</span>
+                </li>
+              </ol>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-xs text-blue-800">
+                  <strong>Supported browsers:</strong> Chrome, Edge, Opera, Brave
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="pt-4">
+            <button
+              onClick={() => setShowInstructions(false)}
+              className="w-full px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark transition-colors"
+            >
+              Got it!
+            </button>
+          </div>
+        </div>
+      </Modal>
+    </>
   );
 };
 
